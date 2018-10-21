@@ -1,7 +1,7 @@
 /* global describe, it */
 
 var assert = require('assert')
-var bscript = require('../src/script')
+var payments = require('../src/payments')
 var bcrypto = require('../src/crypto')
 var ECPair = require('../src/ecpair')
 var NETWORKS = require('../src/networks')
@@ -18,8 +18,8 @@ describe('TransactionBuilder', function () {
     var wif = 'L54PmHcjKXi8H6v9cLAJ7DgGJFDpaFpR2YsV2WARieb82dz3QAfr'
     var keyPair = ECPair.fromWIF(wif, network)
 
-    var pk = bcrypto.hash160(keyPair.getPublicKeyBuffer())
-    var spk = bscript.pubKeyHash.output.encode(pk)
+    var pk = bcrypto.hash160(keyPair.publicKey)
+    var spk = payments.p2pkh({ hash: pk }).output
 
     var txb = new TransactionBuilder(network)
     txb.addInput(txid, vout, Transaction.DEFAULT_SEQUENCE, spk)
@@ -45,10 +45,10 @@ describe('TransactionBuilder', function () {
 
     var txb = TransactionBuilder.fromTransaction(tx, network, Transaction.FORKID_BTG)
 
-    assert.equal(undefined, txb.inputs[0].signatures[0])
+    assert.equal(undefined, txb.__inputs[0].signatures[0])
     assert.equal(
       '3045022100b3b4211b8e8babc667dcca0b6f1c1284f191170a38a59bc3b9d7541d68c3c7a002200196267b87a7b80f3f556b3372e5ee6ed19b4b9e802c34916f45bc2b11d2de1a41',
-      txb.inputs[0].signatures[1].toString('hex')
+      txb.__inputs[0].signatures[1].toString('hex')
     )
 
     var hex = txb.build().toHex()
@@ -66,9 +66,9 @@ describe('TransactionBuilder', function () {
 
     assert.equal(
       '3044022025cb6ee7a63c7403645be2ed4ffcf9cd41d773ee3ba57a05dc335c4427f647660220323a038daac698efdc700ffa8d90e6641ed9eb4ab82808df0506a9da08863d2941',
-      txb.inputs[0].signatures[0].toString('hex')
+      txb.__inputs[0].signatures[0].toString('hex')
     )
-    assert.equal(undefined, txb.inputs[0].signatures[1])
+    assert.equal(undefined, txb.__inputs[0].signatures[1])
 
     var hex = txb.build().toHex()
     assert.equal(txHex, hex)

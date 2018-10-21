@@ -1,7 +1,7 @@
 /* global describe, it */
 
 var assert = require('assert')
-var bscript = require('../src/script')
+var payments = require('../src/payments')
 var ECPair = require('../src/ecpair')
 var NETWORKS = require('../src/networks')
 var TransactionBuilder = require('../src/transaction_builder')
@@ -17,8 +17,8 @@ describe('TransactionBuilder', function () {
     var wif = 'cTNwkxh7nVByhc3i7BH6eaBFQ4yVs6WvXBGBoA9xdKiorwcYVACc'
     var keyPair = ECPair.fromWIF(wif, network)
 
-    var pk = keyPair.getPublicKeyBuffer()
-    var spk = bscript.pubKey.output.encode(pk)
+    var pk = keyPair.publicKey
+    var spk = payments.p2pk({ pubkey: pk }).output
 
     var txb = new TransactionBuilder(network)
     txb.addInput(txid, vout, Transaction.DEFAULT_SEQUENCE, spk)
