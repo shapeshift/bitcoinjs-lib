@@ -190,6 +190,77 @@ describe('bitcoinjs-lib (transactions)', function () {
     })
   })
 
+  it('can create (and broadcast via 3PBP) a Transaction, w/ a P2WPKH input offline signing', function (done) {
+    const keyPair1 = bitcoin.ECPair.makeRandom({ network: regtest })
+    const p2wpkh1 = bitcoin.payments.p2wpkh({ pubkey: keyPair1.publicKey, network: regtest })
+    const keyPair2 = bitcoin.ECPair.makeRandom({ network: regtest })
+    const p2wpkh2 = bitcoin.payments.p2wpkh({ pubkey: keyPair2.publicKey, network: regtest })
+
+    regtestUtils.faucetComplex(p2wpkh1.address, 5e4, function (err1, unspent1) {
+      if (err1) return done(err1)
+      regtestUtils.faucetComplex(p2wpkh2.address, 5e4, function (err2, unspent2) {
+        if (err2) return done(err2)
+
+        function prepareTxOnline(unspents, prevOutScripts, toAddress, fee, network) {
+          const txb = new bitcoin.TransactionBuilder(network)
+          let totalInputMoney = 0
+          unspents.forEach((unspent, i) => {
+            txb.addInput(unspent.txId, unspent.vout)
+            totalInputMoney += 5e4
+          })
+          txb.addOutput(toAddress, totalInputMoney - fee)
+          return txb.buildIncomplete().toHex()
+        }
+        
+        function signOffline(txHex, keyPair, inputIndex, value, hashType) {
+          const tx = bitcoin.Transaction.fromHex(txHex)
+          // because p2wpkh is weird, it signs the prevoutscript as p2pkh
+          // and the witnessScript is the pubkey...
+          const p2pkh = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: keyPair.network })
+
+          const hashForSig = tx.hashForWitnessV0(inputIndex, p2pkh.output, value, hashType)
+          const rawSig = keyPair.sign(hashForSig)
+          tx.setWitness(inputIndex, [
+            bitcoin.script.signature.encode(rawSig, hashType),
+            keyPair.publicKey
+          ])
+          return tx
+        }
+
+        // XXX: build the Transaction w/ a P2WPKH input
+        const txHex = prepareTxOnline(
+          [unspent1,unspent2],
+          [p2wpkh1.output,p2wpkh2.output],
+          regtestUtils.RANDOM_ADDRESS,
+          2e4,
+          regtest
+        )
+        // NOTE: You should bring over:
+        // 1. txhex
+        // 2. which keypair is which input
+        // 3. value of each input
+        // sighash should be ok to be constant.
+        const SIGHASH_ALL = 1
+        // sign first input with first key
+        const txSigned1 = signOffline(txHex, keyPair1, 0, 5e4, SIGHASH_ALL)
+        // sign second input with second key
+        const tx = signOffline(txSigned1.toHex(), keyPair2, 1, 5e4, SIGHASH_ALL)
+
+        // build and broadcast (the P2WPKH transaction) to the Bitcoin RegTest network
+        regtestUtils.broadcast(tx.toHex(), function (err) {
+          if (err) return done(err)
+
+          regtestUtils.verify({
+            txId: tx.getId(),
+            address: regtestUtils.RANDOM_ADDRESS,
+            vout: 0,
+            value: 8e4
+          }, done)
+        })
+      })
+    })
+  })
+
   it('can create (and broadcast via 3PBP) a Transaction, w/ a P2WSH(P2PK) input', function (done) {
     const keyPair = bitcoin.ECPair.makeRandom({ network: regtest })
     const p2pk = bitcoin.payments.p2pk({ pubkey: keyPair.publicKey, network: regtest })
