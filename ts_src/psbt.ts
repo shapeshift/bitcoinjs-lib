@@ -58,6 +58,7 @@ const DEFAULT_OPTS: PsbtOpts = {
    * It is only here as a last ditch effort to prevent sending a 500 BTC fee etc.
    */
   maximumFeeRate: 5000, // satoshi per byte
+  forkCoin: 'none', // use btg or bch to sign with forkID
 };
 
 /**
@@ -333,6 +334,7 @@ export class Psbt {
               inputIndex,
               Object.assign({}, input, { sighashType: sig.hashType }),
               this.__CACHE,
+              this.opts.forkCoin,
             )
           : { hash: hashCache!, script: scriptCache! };
       sighashCache = sig.hashType;
@@ -520,6 +522,7 @@ export class Psbt {
       keyPair.publicKey,
       this.__CACHE,
       sighashTypes,
+      this.opts.forkCoin,
     );
 
     const partialSig = [
@@ -551,6 +554,7 @@ export class Psbt {
           keyPair.publicKey,
           this.__CACHE,
           sighashTypes,
+          this.opts.forkCoin,
         );
 
         Promise.resolve(keyPair.sign(hash)).then(signature => {
@@ -635,14 +639,18 @@ interface PsbtCache {
   __EXTRACTED_TX?: Transaction;
 }
 
+type ForkCoin = 'btg' | 'bch' | 'none';
+
 interface PsbtOptsOptional {
   network?: Network;
   maximumFeeRate?: number;
+  forkCoin?: ForkCoin;
 }
 
 interface PsbtOpts {
   network: Network;
   maximumFeeRate: number;
+  forkCoin: ForkCoin;
 }
 
 interface PsbtInputExtended extends PsbtInput, TransactionInput {}
@@ -989,6 +997,7 @@ function getHashAndSighashType(
   pubkey: Buffer,
   cache: PsbtCache,
   sighashTypes: number[],
+  forkCoin: ForkCoin,
 ): {
   hash: Buffer;
   sighashType: number;
@@ -998,6 +1007,7 @@ function getHashAndSighashType(
     inputIndex,
     input,
     cache,
+    forkCoin,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1007,10 +1017,22 @@ function getHashAndSighashType(
   };
 }
 
+function getDefaultSighash(forkCoin: ForkCoin): number {
+  switch (forkCoin) {
+    case 'bch':
+      return BCH_SIGHASH_ALL;
+    case 'btg':
+      return BTG_SIGHASH_ALL;
+    case 'none':
+      return Transaction.SIGHASH_ALL;
+  }
+}
+
 function getHashForSig(
   inputIndex: number,
   input: PsbtInput,
   cache: PsbtCache,
+  forkCoin: ForkCoin,
   sighashTypes?: number[],
 ): {
   script: Buffer;
@@ -1018,7 +1040,7 @@ function getHashForSig(
   sighashType: number;
 } {
   const unsignedTx = cache.__TX;
-  const sighashType = input.sighashType || Transaction.SIGHASH_ALL;
+  const sighashType = input.sighashType || getDefaultSighash(forkCoin);
   if (sighashTypes && sighashTypes.indexOf(sighashType) < 0) {
     const str = sighashTypeToString(sighashType);
     throw new Error(
