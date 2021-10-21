@@ -1267,7 +1267,7 @@ interface SigningData {
   input: TxbInput;
   ourPubKey: Buffer;
   keyPair: Signer;
-  signatureHash: Buffer;
+  signatureHash: bcrypto.NonDigest | bcrypto.Digest<'hash256'>;
   hashType: number;
   useLowR: boolean;
 }
@@ -1363,7 +1363,7 @@ function getSigningData(
   }
 
   // ready to sign
-  let signatureHash: Buffer;
+  let signatureHash: bcrypto.NonDigest | bcrypto.Digest<'hash256'>;
   if (forkBools.btg) {
     signatureHash = tx.hashForGoldSignature(
       vin,

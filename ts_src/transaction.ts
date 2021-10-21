@@ -26,11 +26,11 @@ function vectorSize(someVector: Buffer[]): number {
 
 const EMPTY_SCRIPT: Buffer = Buffer.allocUnsafe(0);
 const EMPTY_WITNESS: Buffer[] = [];
-const ZERO: Buffer = Buffer.from(
+const ZERO = Buffer.from(
   '0000000000000000000000000000000000000000000000000000000000000000',
   'hex',
 );
-const ONE: Buffer = Buffer.from(
+const ONE = Buffer.from(
   '0000000000000000000000000000000000000000000000000000000000000001',
   'hex',
 );
@@ -267,7 +267,7 @@ export class Transaction {
     inIndex: number,
     prevOutScript: Buffer,
     hashType: number,
-  ): Buffer {
+  ): bcrypto.NonDigest | bcrypto.Digest<'hash256'> {
     typeforce(
       types.tuple(types.UInt32, types.Buffer, /* types.UInt8 */ types.Number),
       arguments,
@@ -344,7 +344,7 @@ export class Transaction {
     prevOutScript: Buffer,
     value: number,
     hashType: number,
-  ): Buffer {
+  ): bcrypto.Digest<'hash256'> {
     typeforce(
       types.tuple(types.UInt32, types.Buffer, types.Satoshi, types.UInt32),
       arguments,
@@ -441,7 +441,7 @@ export class Transaction {
     prevOutScript: Buffer,
     inAmount: number,
     hashType: number,
-  ): Buffer {
+  ): bcrypto.NonDigest | bcrypto.Digest<'hash256'> {
     typeforce(
       types.tuple(
         types.UInt32,
@@ -482,7 +482,7 @@ export class Transaction {
     inAmount: number,
     hashType: number,
     sigVersion?: boolean,
-  ): Buffer {
+  ): bcrypto.NonDigest | bcrypto.Digest<'hash256'> {
     typeforce(
       types.tuple(
         types.UInt32,

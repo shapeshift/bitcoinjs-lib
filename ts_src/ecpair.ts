@@ -1,3 +1,4 @@
+import { Digest, NonDigest } from './crypto';
 import { Network } from './networks';
 import * as NETWORKS from './networks';
 import * as types from './types';
@@ -22,7 +23,7 @@ interface ECPairOptions {
 export interface Signer {
   publicKey: Buffer;
   network?: any;
-  sign(hash: Buffer, lowR?: boolean): Buffer;
+  sign(hash: NonDigest | Digest<'hash256'>, lowR?: boolean): Buffer;
   getPublicKey?(): Buffer;
 }
 

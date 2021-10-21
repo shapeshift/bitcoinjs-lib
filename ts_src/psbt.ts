@@ -17,7 +17,7 @@ import {
 import { checkForInput, checkForOutput } from 'bip174/src/lib/utils';
 import { fromOutputScript, toOutputScript } from './address';
 import { cloneBuffer, reverseBuffer } from './bufferutils';
-import { hash160 } from './crypto';
+import { Digest, hash160, NonDigest } from './crypto';
 import {
   fromPublicKey as ecPairFromPublicKey,
   Signer,
@@ -1218,7 +1218,7 @@ function getHashAndSighashType(
   sighashTypes: number[],
   forkCoin: ForkCoin,
 ): {
-  hash: Buffer;
+  hash: NonDigest | Digest<'hash256'>;
   sighashType: number;
 } {
   const input = checkForInput(inputs, inputIndex);
@@ -1257,7 +1257,7 @@ function getHashForSig(
   sighashTypes?: number[],
 ): {
   script: Buffer;
-  hash: Buffer;
+  hash: NonDigest | Digest<'hash256'>;
   sighashType: number;
 } {
   const unsignedTx = cache.__TX;
@@ -1269,7 +1269,7 @@ function getHashForSig(
         `sighashTypes array of whitelisted types. Sighash type: ${str}`,
     );
   }
-  let hash: Buffer;
+  let hash: NonDigest | Digest<'hash256'>;
   let prevout: Output;
 
   const isForkId = (sighashType & Transaction.SIGHASH_BITCOINCASHBIP143) > 0;
