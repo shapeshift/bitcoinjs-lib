@@ -29,7 +29,7 @@ jobs:
           command: yarn test
       - when:
           condition:
-            equal: [ master, << pipeline.git.branch >> ]
+            equal: [ cashv5, << pipeline.git.branch >> ]
           steps:
             - add_ssh_keys
             - run:
