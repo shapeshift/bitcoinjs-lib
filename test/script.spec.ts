@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
-import { script as bscript } from 'bitcoinjs-lib';
+import { script as bscript } from '@shapeshiftoss/bitcoinjs-lib';
 import fixtures from './fixtures/script.json';
 import minimalData from 'minimaldata';
 

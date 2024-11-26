@@ -92,6 +92,7 @@ class Transaction {
   static SIGHASH_NONE = 0x02;
   static SIGHASH_SINGLE = 0x03;
   static SIGHASH_ANYONECANPAY = 0x80;
+  static SIGHASH_BITCOINCASHBIP143 = 0x40;
   static SIGHASH_OUTPUT_MASK = 0x03;
   static SIGHASH_INPUT_MASK = 0x80;
   static ADVANCED_TRANSACTION_MARKER = 0x00;

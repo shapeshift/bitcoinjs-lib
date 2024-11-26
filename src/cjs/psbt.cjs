@@ -58,6 +58,15 @@ const transaction_js_1 = require('./transaction.cjs');
 const bip371_js_1 = require('./psbt/bip371.cjs');
 const psbtutils_js_1 = require('./psbt/psbtutils.cjs');
 const tools = __importStar(require('uint8array-tools'));
+const BCH_SIGHASH_ALL =
+  transaction_js_1.Transaction.SIGHASH_ALL |
+  transaction_js_1.Transaction.SIGHASH_BITCOINCASHBIP143;
+const DEFAULT_SIGHASHES = [
+  // BTC SIGHASH_ALL
+  transaction_js_1.Transaction.SIGHASH_ALL,
+  // BCH SIGHASH_ALL
+  BCH_SIGHASH_ALL,
+];
 /**
  * These are the default arguments for a Psbt instance.
  */
@@ -73,6 +82,7 @@ const DEFAULT_OPTS = {
    * It is only here as a last ditch effort to prevent sending a 500 BTC fee etc.
    */
   maximumFeeRate: 5000, // satoshi per byte
+  forkCoin: 'none', // use bch to sign with forkID
 };
 /**
  * Psbt class can parse and generate a PSBT binary based off of the BIP174.
@@ -490,6 +500,7 @@ class Psbt {
               Object.assign({}, input, { sighashType: sig.hashType }),
               this.__CACHE,
               true,
+              this.opts.forkCoin,
             )
           : { hash: hashCache, script: scriptCache };
       sighashCache = sig.hashType;
@@ -553,10 +564,7 @@ class Psbt {
     }
     return validationResultCount > 0;
   }
-  signAllInputsHD(
-    hdKeyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  signAllInputsHD(hdKeyPair, sighashTypes) {
     if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
       throw new Error('Need HDSigner to sign input');
     }
@@ -574,10 +582,7 @@ class Psbt {
     }
     return this;
   }
-  signAllInputsHDAsync(
-    hdKeyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  signAllInputsHDAsync(hdKeyPair, sighashTypes) {
     return new Promise((resolve, reject) => {
       if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
         return reject(new Error('Need HDSigner to sign input'));
@@ -604,11 +609,7 @@ class Psbt {
       });
     });
   }
-  signInputHD(
-    inputIndex,
-    hdKeyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  signInputHD(inputIndex, hdKeyPair, sighashTypes) {
     if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
       throw new Error('Need HDSigner to sign input');
     }
@@ -616,11 +617,7 @@ class Psbt {
     signers.forEach(signer => this.signInput(inputIndex, signer, sighashTypes));
     return this;
   }
-  signInputHDAsync(
-    inputIndex,
-    hdKeyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  signInputHDAsync(inputIndex, hdKeyPair, sighashTypes) {
     return new Promise((resolve, reject) => {
       if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
         return reject(new Error('Need HDSigner to sign input'));
@@ -714,22 +711,22 @@ class Psbt {
       );
     throw new Error(`Input #${inputIndex} is not of type Taproot.`);
   }
-  _signInput(
-    inputIndex,
-    keyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  _signInput(inputIndex, keyPair, sighashTypes = DEFAULT_SIGHASHES) {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
       inputIndex,
       keyPair.publicKey,
       this.__CACHE,
       sighashTypes,
+      this.opts.forkCoin,
     );
     const partialSig = [
       {
         pubkey: keyPair.publicKey,
-        signature: bscript.signature.encode(keyPair.sign(hash), sighashType),
+        signature: bscript.signature.encode(
+          keyPair.sign(hash),
+          sighashType & 0xff,
+        ),
       },
     ];
     this.data.updateInput(inputIndex, { partialSig });
@@ -807,23 +804,20 @@ class Psbt {
       throw new Error(`Input #${inputIndex} is not of type Taproot.`);
     });
   }
-  _signInputAsync(
-    inputIndex,
-    keyPair,
-    sighashTypes = [transaction_js_1.Transaction.SIGHASH_ALL],
-  ) {
+  _signInputAsync(inputIndex, keyPair, sighashTypes = DEFAULT_SIGHASHES) {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
       inputIndex,
       keyPair.publicKey,
       this.__CACHE,
       sighashTypes,
+      this.opts.forkCoin,
     );
     return Promise.resolve(keyPair.sign(hash)).then(signature => {
       const partialSig = [
         {
           pubkey: keyPair.publicKey,
-          signature: bscript.signature.encode(signature, sighashType),
+          signature: bscript.signature.encode(signature, sighashType & 0xff),
         },
       ];
       this.data.updateInput(inputIndex, { partialSig });
@@ -1111,7 +1105,7 @@ function checkPartialSigSighashes(input) {
   const { partialSig, sighashType } = input;
   partialSig.forEach(pSig => {
     const { hashType } = bscript.signature.decode(pSig.signature);
-    if (sighashType !== hashType) {
+    if ((sighashType & 0xff) !== hashType) {
       throw new Error('Signature sighash does not match input sighash type');
     }
   });
@@ -1242,6 +1236,7 @@ function getHashAndSighashType(
   pubkey,
   cache,
   sighashTypes,
+  forkCoin,
 ) {
   const input = (0, bip174_2.checkForInput)(inputs, inputIndex);
   const { hash, sighashType, script } = getHashForSig(
@@ -1249,6 +1244,7 @@ function getHashAndSighashType(
     input,
     cache,
     false,
+    forkCoin,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1257,13 +1253,29 @@ function getHashAndSighashType(
     sighashType,
   };
 }
-function getHashForSig(inputIndex, input, cache, forValidate, sighashTypes) {
+function getDefaultSighash(forkCoin) {
+  switch (forkCoin) {
+    case 'bch':
+      return BCH_SIGHASH_ALL;
+    case 'none':
+      return transaction_js_1.Transaction.SIGHASH_ALL;
+  }
+}
+function getHashForSig(
+  inputIndex,
+  input,
+  cache,
+  forValidate,
+  forkCoin,
+  sighashTypes,
+) {
   const unsignedTx = cache.__TX;
-  const sighashType =
-    input.sighashType || transaction_js_1.Transaction.SIGHASH_ALL;
+  const sighashType = input.sighashType || getDefaultSighash(forkCoin);
   checkSighashTypeAllowed(sighashType, sighashTypes);
   let hash;
   let prevout;
+  const isForkId =
+    (sighashType & transaction_js_1.Transaction.SIGHASH_BITCOINCASHBIP143) > 0;
   if (input.nonWitnessUtxo) {
     const nonWitnessUtxoTx = nonWitnessUtxoTxFromCache(
       cache,
@@ -1313,6 +1325,7 @@ function getHashForSig(inputIndex, input, cache, forValidate, sighashTypes) {
   } else {
     // non-segwit
     if (
+      !isForkId &&
       input.nonWitnessUtxo === undefined &&
       cache.__UNSAFE_SIGN_NONSEGWIT === false
     )
@@ -1330,11 +1343,22 @@ function getHashForSig(inputIndex, input, cache, forValidate, sighashTypes) {
           'BIP174 compliant.\n*********************\nPROCEED WITH CAUTION!\n' +
           '*********************',
       );
-    hash = unsignedTx.hashForSignature(
-      inputIndex,
-      meaningfulScript,
-      sighashType,
-    );
+    // Bitcoin Cash uses the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
+    // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
+    if (isForkId) {
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        meaningfulScript,
+        prevout.value,
+        sighashType,
+      );
+    } else {
+      hash = unsignedTx.hashForSignature(
+        inputIndex,
+        meaningfulScript,
+        sighashType,
+      );
+    }
   }
   return {
     script: meaningfulScript,
@@ -1575,6 +1599,8 @@ function sighashTypeToString(sighashType) {
     sighashType & transaction_js_1.Transaction.SIGHASH_ANYONECANPAY
       ? 'SIGHASH_ANYONECANPAY | '
       : '';
+  if (sighashType & transaction_js_1.Transaction.SIGHASH_BITCOINCASHBIP143)
+    text += 'SIGHASH_BITCOINCASHBIP143 | FORKID_BCH | ';
   const sigMod = sighashType & 0x1f;
   switch (sigMod) {
     case transaction_js_1.Transaction.SIGHASH_ALL:

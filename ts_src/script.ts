@@ -237,7 +237,7 @@ export function isCanonicalPubKey(buffer: Uint8Array): boolean {
 }
 
 export function isDefinedHashType(hashType: number): boolean {
-  const hashTypeMod = hashType & ~0x80;
+  const hashTypeMod = hashType & ~0xc0;
 
   return hashTypeMod > 0x00 && hashTypeMod < 0x04;
 }

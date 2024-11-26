@@ -5,7 +5,7 @@ import * as ecc from 'tiny-secp256k1';
 import { describe, it } from 'mocha';
 import { PsbtInput, TapLeaf, TapLeafScript } from 'bip174';
 import { regtestUtils } from './_regtest.js';
-import * as bitcoin from 'bitcoinjs-lib';
+import * as bitcoin from '@shapeshiftoss/bitcoinjs-lib';
 import { Taptree } from 'bitcoinjs-lib/src/types';
 import {
   LEAF_VERSION_TAPSCRIPT,
