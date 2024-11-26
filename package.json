@@ -1,6 +1,6 @@
 {
   "name": "@shapeshiftoss/bitcoinjs-lib",
-  "version": "7.0.0-rc.0-shapeshift.0",
+  "version": "7.0.0-shapeshift.0",
   "description": "Client-side Bitcoin JavaScript library",
   "type": "module",
   "main": "./src/cjs/index.cjs",
@@ -71,9 +71,9 @@
     "varuint-bitcoin": "^2.0.0"
   },
   "devDependencies": {
-    "@shapeshiftoss/bitcoinjs-lib": ".",
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.9.1",
+    "@shapeshiftoss/bitcoinjs-lib": ".",
     "@types/bs58": "^4.0.0",
     "@types/bs58check": "^2.1.0",
     "@types/mocha": "^5.2.7",
@@ -87,6 +87,7 @@
     "bip65": "^1.0.1",
     "bip68": "^1.0.3",
     "bs58": "^6.0.0",
+    "c8": "^10.1.2",
     "dhttp": "^3.0.0",
     "ecpair": "^3.0.0-rc.0",
     "eslint": "^9.9.0",
@@ -96,7 +97,6 @@
     "hoodwink": "^2.0.0",
     "minimaldata": "^1.0.2",
     "mocha": "^10.6.0",
-    "c8": "^10.1.2",
     "prettier": "^3.0.0",
     "proxyquire": "^2.0.1",
     "randombytes": "^2.1.0",
