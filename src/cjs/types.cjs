@@ -46,6 +46,7 @@ var __importStar =
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.NullablePartial =
   exports.SatoshiSchema =
+  exports.UInt53Schema =
   exports.UInt32Schema =
   exports.UInt8Schema =
   exports.HexSchema =
@@ -131,6 +132,12 @@ exports.UInt32Schema = v.pipe(
   v.integer(),
   v.minValue(0),
   v.maxValue(0xffffffff),
+);
+exports.UInt53Schema = v.pipe(
+  v.number(),
+  v.integer(),
+  v.minValue(0),
+  v.maxValue(0x1fffffffffffff),
 );
 exports.SatoshiSchema = v.pipe(
   v.bigint(),

@@ -9,7 +9,7 @@ import { convertScriptTree } from './payments.utils.js';
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341';
 import { tapTreeToList, tapTreeFromList } from 'bitcoinjs-lib/src/psbt/bip371';
 import type { Taptree } from 'bitcoinjs-lib/src/types';
-import { initEccLib } from 'bitcoinjs-lib';
+import { initEccLib } from '@shapeshiftoss/bitcoinjs-lib';
 import * as tools from 'uint8array-tools';
 
 const rng = (size: number) => crypto.randomBytes(size);
@@ -23,7 +23,7 @@ import {
   payments,
   Signer,
   SignerAsync,
-} from 'bitcoinjs-lib';
+} from '@shapeshiftoss/bitcoinjs-lib';
 
 import preFixtures from './fixtures/psbt.json';
 import taprootFixtures from './fixtures/p2tr.json';

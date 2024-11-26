@@ -319,7 +319,7 @@ function isCanonicalPubKey(buffer) {
  * @returns True if the hash type is defined, false otherwise.
  */
 function isDefinedHashType(hashType) {
-  const hashTypeMod = hashType & ~0x80;
+  const hashTypeMod = hashType & ~0xc0;
   return hashTypeMod > 0x00 && hashTypeMod < 0x04;
 }
 /**

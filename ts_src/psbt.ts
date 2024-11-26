@@ -48,6 +48,16 @@ import * as tools from 'uint8array-tools';
 
 export { toXOnly };
 
+const BCH_SIGHASH_ALL =
+  Transaction.SIGHASH_ALL | Transaction.SIGHASH_BITCOINCASHBIP143;
+
+const DEFAULT_SIGHASHES = [
+  // BTC SIGHASH_ALL
+  Transaction.SIGHASH_ALL,
+  // BCH SIGHASH_ALL
+  BCH_SIGHASH_ALL,
+];
+
 export interface TransactionInput {
   hash: string | Uint8Array;
   index: number;
@@ -89,6 +99,7 @@ const DEFAULT_OPTS: PsbtOpts = {
    * It is only here as a last ditch effort to prevent sending a 500 BTC fee etc.
    */
   maximumFeeRate: 5000, // satoshi per byte
+  forkCoin: 'none', // use bch to sign with forkID
 };
 
 /**
@@ -578,6 +589,7 @@ export class Psbt {
               Object.assign({}, input, { sighashType: sig.hashType }),
               this.__CACHE,
               true,
+              this.opts.forkCoin,
             )
           : { hash: hashCache!, script: scriptCache! };
       sighashCache = sig.hashType;
@@ -652,10 +664,7 @@ export class Psbt {
     return validationResultCount > 0;
   }
 
-  signAllInputsHD(
-    hdKeyPair: HDSigner,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
-  ): this {
+  signAllInputsHD(hdKeyPair: HDSigner, sighashTypes?: number[]): this {
     if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
       throw new Error('Need HDSigner to sign input');
     }
@@ -677,7 +686,7 @@ export class Psbt {
 
   signAllInputsHDAsync(
     hdKeyPair: HDSigner | HDSignerAsync,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
+    sighashTypes?: number[],
   ): Promise<void> {
     return new Promise((resolve, reject): any => {
       if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
@@ -710,7 +719,7 @@ export class Psbt {
   signInputHD(
     inputIndex: number,
     hdKeyPair: HDSigner,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
+    sighashTypes?: number[],
   ): this {
     if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
       throw new Error('Need HDSigner to sign input');
@@ -727,7 +736,7 @@ export class Psbt {
   signInputHDAsync(
     inputIndex: number,
     hdKeyPair: HDSigner | HDSignerAsync,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
+    sighashTypes?: number[],
   ): Promise<void> {
     return new Promise((resolve, reject): any => {
       if (!hdKeyPair || !hdKeyPair.publicKey || !hdKeyPair.fingerprint) {
@@ -847,7 +856,7 @@ export class Psbt {
   private _signInput(
     inputIndex: number,
     keyPair: Signer,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
+    sighashTypes: number[] = DEFAULT_SIGHASHES,
   ): this {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
@@ -855,12 +864,16 @@ export class Psbt {
       keyPair.publicKey,
       this.__CACHE,
       sighashTypes,
+      this.opts.forkCoin,
     );
 
     const partialSig = [
       {
         pubkey: keyPair.publicKey,
-        signature: bscript.signature.encode(keyPair.sign(hash), sighashType),
+        signature: bscript.signature.encode(
+          keyPair.sign(hash),
+          sighashType & 0xff,
+        ),
       },
     ];
 
@@ -967,7 +980,7 @@ export class Psbt {
   private _signInputAsync(
     inputIndex: number,
     keyPair: Signer | SignerAsync,
-    sighashTypes: number[] = [Transaction.SIGHASH_ALL],
+    sighashTypes: number[] = DEFAULT_SIGHASHES,
   ): Promise<void> {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
@@ -975,13 +988,14 @@ export class Psbt {
       keyPair.publicKey,
       this.__CACHE,
       sighashTypes,
+      this.opts.forkCoin,
     );
 
     return Promise.resolve(keyPair.sign(hash)).then(signature => {
       const partialSig = [
         {
           pubkey: keyPair.publicKey,
-          signature: bscript.signature.encode(signature, sighashType),
+          signature: bscript.signature.encode(signature, sighashType & 0xff),
         },
       ];
 
@@ -1154,14 +1168,18 @@ interface PsbtCache {
   __UNSAFE_SIGN_NONSEGWIT: boolean;
 }
 
+type ForkCoin = 'bch' | 'none';
+
 interface PsbtOptsOptional {
   network?: Network;
   maximumFeeRate?: number;
+  forkCoin?: ForkCoin;
 }
 
 interface PsbtOpts {
   network: Network;
   maximumFeeRate: number;
+  forkCoin: ForkCoin;
 }
 
 interface PsbtInputExtended extends PsbtInput, TransactionInput {}
@@ -1399,7 +1417,7 @@ function checkPartialSigSighashes(input: PsbtInput): void {
   const { partialSig, sighashType } = input;
   partialSig.forEach((pSig: PartialSig) => {
     const { hashType } = bscript.signature.decode(pSig.signature);
-    if (sighashType !== hashType) {
+    if ((sighashType & 0xff) !== hashType) {
       throw new Error('Signature sighash does not match input sighash type');
     }
   });
@@ -1598,6 +1616,7 @@ function getHashAndSighashType(
   pubkey: Uint8Array,
   cache: PsbtCache,
   sighashTypes: number[],
+  forkCoin: ForkCoin,
 ): {
   hash: Uint8Array;
   sighashType: number;
@@ -1608,6 +1627,7 @@ function getHashAndSighashType(
     input,
     cache,
     false,
+    forkCoin,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1617,11 +1637,21 @@ function getHashAndSighashType(
   };
 }
 
+function getDefaultSighash(forkCoin: ForkCoin): number {
+  switch (forkCoin) {
+    case 'bch':
+      return BCH_SIGHASH_ALL;
+    case 'none':
+      return Transaction.SIGHASH_ALL;
+  }
+}
+
 function getHashForSig(
   inputIndex: number,
   input: PsbtInput,
   cache: PsbtCache,
   forValidate: boolean,
+  forkCoin: ForkCoin,
   sighashTypes?: number[],
 ): {
   script: Uint8Array;
@@ -1629,11 +1659,13 @@ function getHashForSig(
   sighashType: number;
 } {
   const unsignedTx = cache.__TX;
-  const sighashType = input.sighashType || Transaction.SIGHASH_ALL;
+  const sighashType = input.sighashType || getDefaultSighash(forkCoin);
   checkSighashTypeAllowed(sighashType, sighashTypes);
 
   let hash: Uint8Array;
   let prevout: Output;
+
+  const isForkId = (sighashType & Transaction.SIGHASH_BITCOINCASHBIP143) > 0;
 
   if (input.nonWitnessUtxo) {
     const nonWitnessUtxoTx = nonWitnessUtxoTxFromCache(
@@ -1689,6 +1721,7 @@ function getHashForSig(
   } else {
     // non-segwit
     if (
+      !isForkId &&
       input.nonWitnessUtxo === undefined &&
       cache.__UNSAFE_SIGN_NONSEGWIT === false
     )
@@ -1706,11 +1739,23 @@ function getHashForSig(
           'BIP174 compliant.\n*********************\nPROCEED WITH CAUTION!\n' +
           '*********************',
       );
-    hash = unsignedTx.hashForSignature(
-      inputIndex,
-      meaningfulScript,
-      sighashType,
-    );
+
+    // Bitcoin Cash uses the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
+    // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
+    if (isForkId) {
+      hash = unsignedTx.hashForWitnessV0(
+        inputIndex,
+        meaningfulScript,
+        prevout.value,
+        sighashType,
+      );
+    } else {
+      hash = unsignedTx.hashForSignature(
+        inputIndex,
+        meaningfulScript,
+        sighashType,
+      );
+    }
   }
 
   return {
@@ -2009,6 +2054,8 @@ function sighashTypeToString(sighashType: number): string {
     sighashType & Transaction.SIGHASH_ANYONECANPAY
       ? 'SIGHASH_ANYONECANPAY | '
       : '';
+  if (sighashType & Transaction.SIGHASH_BITCOINCASHBIP143)
+    text += 'SIGHASH_BITCOINCASHBIP143 | FORKID_BCH | ';
   const sigMod = sighashType & 0x1f;
   switch (sigMod) {
     case Transaction.SIGHASH_ALL:

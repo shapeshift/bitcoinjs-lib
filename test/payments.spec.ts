@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 import * as ecc from 'tiny-secp256k1';
 import { describe, it, before, beforeEach } from 'mocha';
-import { PaymentCreator } from 'bitcoinjs-lib';
+import { PaymentCreator } from '@shapeshiftoss/bitcoinjs-lib';
 import * as u from './payments.utils.js';
-import { initEccLib } from 'bitcoinjs-lib';
-import { payments } from 'bitcoinjs-lib';
+import { initEccLib } from '@shapeshiftoss/bitcoinjs-lib';
+import { payments } from '@shapeshiftoss/bitcoinjs-lib';
 const {
   embed: p2data,
   p2ms,
@@ -25,7 +25,7 @@ import p2wpkhFixtures from './fixtures/p2wpkh.json';
 import p2wshFixtures from './fixtures/p2wsh.json';
 import p2trFixtures from './fixtures/p2tr.json';
 
-let testSuite: {
+const testSuite: {
   paymentName: string;
   fixtures: { valid: any[]; invalid: any[]; dynamic?: any };
   payment: PaymentCreator;

@@ -104,6 +104,12 @@ export const UInt32Schema = v.pipe(
   v.minValue(0),
   v.maxValue(0xffffffff),
 );
+export const UInt53Schema = v.pipe(
+  v.number(),
+  v.integer(),
+  v.minValue(0),
+  v.maxValue(0x1fffffffffffff),
+);
 export const SatoshiSchema = v.pipe(
   v.bigint(),
   v.minValue(0n),

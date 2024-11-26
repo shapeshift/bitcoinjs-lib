@@ -70,6 +70,7 @@ export class Transaction {
   static readonly SIGHASH_NONE = 0x02;
   static readonly SIGHASH_SINGLE = 0x03;
   static readonly SIGHASH_ANYONECANPAY = 0x80;
+  static readonly SIGHASH_BITCOINCASHBIP143 = 0x40;
   static readonly SIGHASH_OUTPUT_MASK = 0x03;
   static readonly SIGHASH_INPUT_MASK = 0x80;
   static readonly ADVANCED_TRANSACTION_MARKER = 0x00;
