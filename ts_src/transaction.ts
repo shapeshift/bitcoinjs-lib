@@ -11,8 +11,10 @@ import { OPS as opcodes } from './script.js';
 import * as types from './types.js';
 import * as tools from 'uint8array-tools';
 import * as v from 'valibot';
+import * as zip243 from './zip243.js';
+import * as zip244 from './zip244.js';
 
-function varSliceSize(someScript: Uint8Array): number {
+export function varSliceSize(someScript: Uint8Array): number {
   const length = someScript.length;
 
   return varuint.encodingLength(length) + length;
@@ -29,9 +31,9 @@ function vectorSize(someVector: Uint8Array[]): number {
   );
 }
 
-const EMPTY_BUFFER = new Uint8Array(0);
+const EMPTY_BUFFER: Uint8Array = new Uint8Array(0);
 const EMPTY_WITNESS: Uint8Array[] = [];
-const ZERO = tools.fromHex(
+export const ZERO = tools.fromHex(
   '0000000000000000000000000000000000000000000000000000000000000000',
 );
 const ONE = tools.fromHex(
@@ -80,19 +82,32 @@ export class Transaction {
     const bufferReader = new BufferReader(buffer);
 
     const tx = new Transaction();
-    tx.version = bufferReader.readUInt32();
 
-    const marker = bufferReader.readUInt8();
-    const flag = bufferReader.readUInt8();
+    const header = bufferReader.readUInt32();
+    tx.version = header & 0x7fffffff;
 
     let hasWitnesses = false;
-    if (
-      marker === Transaction.ADVANCED_TRANSACTION_MARKER &&
-      flag === Transaction.ADVANCED_TRANSACTION_FLAG
-    ) {
-      hasWitnesses = true;
+
+    tx.overwintered = (header & 0x80000000) !== 0;
+    if (tx.overwintered) {
+      tx.versionGroupId = bufferReader.readUInt32();
+      if (tx.version === 5) {
+        tx.consensusBranchId = bufferReader.readUInt32();
+        tx.locktime = bufferReader.readUInt32();
+        tx.expiryHeight = bufferReader.readUInt32();
+      }
     } else {
-      bufferReader.offset -= 2;
+      const marker = bufferReader.readUInt8();
+      const flag = bufferReader.readUInt8();
+
+      if (
+        marker === Transaction.ADVANCED_TRANSACTION_MARKER &&
+        flag === Transaction.ADVANCED_TRANSACTION_FLAG
+      ) {
+        hasWitnesses = true;
+      } else {
+        bufferReader.offset -= 2;
+      }
     }
 
     const vinLen = bufferReader.readVarInt();
@@ -124,7 +139,79 @@ export class Transaction {
         throw new Error('Transaction has superfluous witness data');
     }
 
-    tx.locktime = bufferReader.readUInt32();
+    if (tx.overwintered) {
+      switch (tx.version) {
+        case 3: {
+          tx.locktime = bufferReader.readUInt32();
+          tx.expiryHeight = bufferReader.readUInt32();
+          const nJoinSplit = bufferReader.readVarInt();
+          if (nJoinSplit > 0) {
+            // vJoinSplit
+            // joinSplitPubKey
+            // joinSplitSig
+            throw new Error('Shielded transactions not supported');
+          }
+          break;
+        }
+        case 4: {
+          tx.locktime = bufferReader.readUInt32();
+          tx.expiryHeight = bufferReader.readUInt32();
+          tx.valueBalance = bufferReader.readInt64();
+          const nShieldedSpend = bufferReader.readVarInt();
+          if (nShieldedSpend > 0) {
+            // vShieldedSpend
+            throw new Error('Shielded transactions not supported');
+          }
+          const nShieldedOutput = bufferReader.readVarInt();
+          if (nShieldedOutput > 0) {
+            // vShieldedOutput
+            // bindingSig
+            throw new Error('Shielded transactions not supported');
+          }
+          const nJoinSplit = bufferReader.readVarInt();
+          if (nJoinSplit > 0) {
+            // vJoinSplit
+            // joinSplitPubKey
+            // joinSplitSig
+            throw new Error('Shielded transactions not supported');
+          }
+          break;
+        }
+        case 5: {
+          const nSpendsSapling = bufferReader.readVarInt();
+          if (nSpendsSapling > 0) {
+            // vSpendsSapling
+            throw new Error('Shielded transactions not supported');
+          }
+          const nOutputsSapling = bufferReader.readVarInt();
+          if (nOutputsSapling > 0) {
+            // vOutputsSapling
+            // valueBalanceSapling
+            // anchorSapling
+            // vSpendProofsSapling
+            // vSpendAuthSigsSapling
+            // vOutputProofsSapling
+            // bindingSigSapling
+            throw new Error('Shielded transactions not supported');
+          }
+          const nActionsOrchard = bufferReader.readVarInt();
+          if (nActionsOrchard > 0) {
+            // vActionsOrchard
+            // flagsOrchard
+            // valueBalanceOrchard
+            // anchorOrchard
+            // sizeProofsOrchard
+            // proofsOrchard
+            // vSpendAuthSigsOrchard
+            // bindingSigOrchard
+            throw new Error('Shielded transactions not supported');
+          }
+          break;
+        }
+      }
+    } else {
+      tx.locktime = bufferReader.readUInt32();
+    }
 
     if (_NO_STRICT) return tx;
     if (bufferReader.offset !== buffer.length)
@@ -149,6 +236,13 @@ export class Transaction {
   locktime: number = 0;
   ins: Input[] = [];
   outs: Output[] = [];
+
+  // Zcash
+  overwintered: boolean = false;
+  versionGroupId?: number;
+  consensusBranchId?: number;
+  expiryHeight?: number;
+  valueBalance?: bigint;
 
   isCoinbase(): boolean {
     return (
@@ -230,6 +324,7 @@ export class Transaction {
 
     return (
       (hasWitnesses ? 10 : 8) +
+      (this.overwintered ? (this.version !== 5 ? 8 : 12) : 0) +
       varuint.encodingLength(this.ins.length) +
       varuint.encodingLength(this.outs.length) +
       this.ins.reduce((sum, input) => {
@@ -242,14 +337,22 @@ export class Transaction {
         ? this.ins.reduce((sum, input) => {
             return sum + vectorSize(input.witness);
           }, 0)
-        : 0)
+        : 0) +
+      (this.overwintered && this.version === 3 ? 1 : 0) +
+      (this.overwintered && this.version === 4 ? 11 : 0) +
+      (this.overwintered && this.version === 5 ? 3 : 0)
     );
   }
 
   clone(): Transaction {
     const newTx = new Transaction();
+
     newTx.version = this.version;
+    newTx.overwintered = this.overwintered;
+    newTx.versionGroupId = this.versionGroupId;
+    newTx.consensusBranchId = this.consensusBranchId;
     newTx.locktime = this.locktime;
+    newTx.expiryHeight = this.expiryHeight;
 
     newTx.ins = this.ins.map(txIn => {
       return {
@@ -267,6 +370,8 @@ export class Transaction {
         value: txOut.value,
       };
     });
+
+    newTx.valueBalance = this.valueBalance;
 
     return newTx;
   }
@@ -591,27 +696,98 @@ export class Transaction {
       hashOutputs = bcrypto.hash256(tbuffer);
     }
 
-    tbuffer = new Uint8Array(156 + varSliceSize(prevOutScript));
+    const isZcashSapling =
+      this.version === 4 && this.versionGroupId !== undefined;
+
+    tbuffer = new Uint8Array(
+      (isZcashSapling ? 268 : 156) + varSliceSize(prevOutScript),
+    );
     bufferWriter = new BufferWriter(tbuffer, 0);
 
+    bufferWriter.writeUInt32(
+      isZcashSapling ? (this.version | 0x80000000) >>> 0 : this.version,
+    );
+    if (isZcashSapling) {
+      bufferWriter.writeUInt32(this.versionGroupId!);
+    }
     const input = this.ins[inIndex];
-    bufferWriter.writeUInt32(this.version);
     bufferWriter.writeSlice(hashPrevouts);
     bufferWriter.writeSlice(hashSequence);
+
     bufferWriter.writeSlice(input.hash);
     bufferWriter.writeUInt32(input.index);
     bufferWriter.writeVarSlice(prevOutScript);
     bufferWriter.writeInt64(value);
     bufferWriter.writeUInt32(input.sequence);
     bufferWriter.writeSlice(hashOutputs);
+    if (isZcashSapling) {
+      bufferWriter.writeSlice(ZERO); // hashJoinSplits
+      bufferWriter.writeSlice(ZERO); // hashShieldedSpends
+      bufferWriter.writeSlice(ZERO); // hashShieldedOutput
+    }
     bufferWriter.writeUInt32(this.locktime);
+    if (isZcashSapling) {
+      bufferWriter.writeUInt32(this.expiryHeight ?? 0);
+      bufferWriter.writeInt64(0); // valueBalance
+    }
     bufferWriter.writeUInt32(hashType);
     return bcrypto.hash256(tbuffer);
+  }
+
+  hashForWitnessV4(
+    inIndex: number,
+    prevOutScript: Uint8Array,
+    value: bigint,
+    hashType: number,
+  ): Uint8Array {
+    v.parse(
+      v.tuple([
+        types.UInt32Schema,
+        types.BufferSchema,
+        types.SatoshiSchema,
+        types.UInt32Schema,
+      ]),
+      [inIndex, prevOutScript, value, hashType],
+    );
+
+    return zip243.getSignatureDigest(
+      this,
+      inIndex,
+      prevOutScript,
+      value,
+      hashType,
+    );
+  }
+
+  hashForWitnessV5(
+    inIndex: number,
+    prevOuts: Output[],
+    hashType: number,
+  ): Uint8Array {
+    v.parse(
+      v.tuple([
+        types.UInt32Schema,
+        v.array(types.OutputSchema),
+        types.UInt32Schema,
+      ]),
+      [inIndex, prevOuts, hashType],
+    );
+
+    if (this.ins.length !== prevOuts.length) {
+      throw new Error('prevOuts must match inputs');
+    }
+
+    return zip244.getSignatureDigest(this, inIndex, prevOuts, hashType);
   }
 
   getHash(forWitness?: boolean): Uint8Array {
     // wtxid for coinbase is always 32 bytes of 0x00
     if (forWitness && this.isCoinbase()) return new Uint8Array(32);
+
+    if (this.version === 5 && this.overwintered) {
+      return zip244.getTxIdDigest(this);
+    }
+
     return bcrypto.hash256(this.__toBuffer(undefined, undefined, forWitness));
   }
 
@@ -653,7 +829,22 @@ export class Transaction {
 
     const bufferWriter = new BufferWriter(buffer, initialOffset || 0);
 
-    bufferWriter.writeUInt32(this.version);
+    bufferWriter.writeUInt32(
+      this.overwintered ? (this.version | 0x80000000) >>> 0 : this.version,
+    );
+
+    if (this.overwintered) {
+      if (this.versionGroupId !== undefined) {
+        bufferWriter.writeUInt32(this.versionGroupId);
+      }
+      if (this.version === 5) {
+        if (this.consensusBranchId !== undefined) {
+          bufferWriter.writeUInt32(this.consensusBranchId);
+        }
+        bufferWriter.writeUInt32(this.locktime);
+        bufferWriter.writeUInt32(this.expiryHeight ?? 0);
+      }
+    }
 
     const hasWitnesses = _ALLOW_WITNESS && this.hasWitnesses();
 
@@ -688,7 +879,58 @@ export class Transaction {
       });
     }
 
-    bufferWriter.writeUInt32(this.locktime);
+    if (this.overwintered) {
+      switch (this.version) {
+        case 3: {
+          bufferWriter.writeUInt32(this.locktime);
+          bufferWriter.writeUInt32(this.expiryHeight ?? 0);
+          bufferWriter.writeVarInt(0); // nJoinSplit
+          // vJoinSplit
+          // joinSplitPubKey
+          // joinSplitSig
+          break;
+        }
+        case 4: {
+          bufferWriter.writeUInt32(this.locktime);
+          bufferWriter.writeUInt32(this.expiryHeight ?? 0);
+          bufferWriter.writeInt64(this.valueBalance ?? 0); // valueBalance
+          bufferWriter.writeVarInt(0); // nShieldedSpend
+          // vShieldedSpend
+          bufferWriter.writeVarInt(0); // nShieldedOutput
+          // vShieldedOutput
+          // bindingSig
+          bufferWriter.writeVarInt(0); // nJoinSplit
+          // vJoinSplit
+          // joinSplitPubKey
+          // joinSplitSig
+          break;
+        }
+        case 5: {
+          bufferWriter.writeVarInt(0); // nSpendsSapling
+          // vSpendsSapling
+          bufferWriter.writeVarInt(0); // nOutputsSapling
+          // vOutputsSapling
+          // valueBalanceSapling
+          // anchorSapling
+          // vSpendProofsSapling
+          // vSpendAuthSigsSapling
+          // vOutputProofsSapling
+          // bindingSigSapling
+          bufferWriter.writeVarInt(0); // nActionsOrchard
+          // vActionsOrchard
+          // flagsOrchard
+          // valueBalanceOrchard
+          // anchorOrchard
+          // sizeProofsOrchard
+          // proofsOrchard
+          // vSpendAuthSigsOrchard
+          // bindingSigOrchard
+          break;
+        }
+      }
+    } else {
+      bufferWriter.writeUInt32(this.locktime);
+    }
 
     // avoid slicing unless necessary
     if (initialOffset !== undefined)

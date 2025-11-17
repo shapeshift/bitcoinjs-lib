@@ -56,9 +56,12 @@ export function fromBase58Check(address) {
   const payload = bs58check.decode(address);
   // TODO: 4.0.0, move to "toOutputScript"
   if (payload.length < 21) throw new TypeError(address + ' is too short');
-  if (payload.length > 21) throw new TypeError(address + ' is too long');
-  const version = tools.readUInt8(payload, 0);
-  const hash = payload.slice(1);
+  if (payload.length > 22) throw new TypeError(address + ' is too long');
+  const is2BytePrefix = payload.length === 22;
+  const version = is2BytePrefix
+    ? tools.readUInt16(payload, 0, 'BE')
+    : tools.readUInt8(payload, 0);
+  const hash = payload.slice(is2BytePrefix ? 2 : 1);
   return { version, hash };
 }
 /**

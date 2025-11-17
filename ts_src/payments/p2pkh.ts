@@ -48,25 +48,34 @@ export function p2pkh(a: Payment, opts?: PaymentOpts): Payment {
     a,
   );
 
+  const network = a.network || BITCOIN_NETWORK;
+  const is2BytePrefix =
+    network.pubKeyHash > 0xff && network.pubKeyHash <= 0xffff;
+
   const _address = lazy.value(() => {
     const payload = bs58check.decode(a.address!);
-    const version = tools.readUInt8(payload, 0);
-    const hash = payload.slice(1);
+    const version = is2BytePrefix
+      ? tools.readUInt16(payload, 0, 'BE')
+      : tools.readUInt8(payload, 0);
+    const hash = payload.slice(is2BytePrefix ? 2 : 1);
     return { version, hash };
   });
   const _chunks = lazy.value(() => {
     return bscript.decompile(a.input!);
   }) as StackFunction;
 
-  const network = a.network || BITCOIN_NETWORK;
   const o: Payment = { name: 'p2pkh', network };
 
   lazy.prop(o, 'address', () => {
     if (!o.hash) return;
-
-    const payload = new Uint8Array(21);
-    tools.writeUInt8(payload, 0, network.pubKeyHash);
-    payload.set(o.hash, 1);
+    const payload = new Uint8Array(is2BytePrefix ? 22 : 21);
+    if (is2BytePrefix) {
+      tools.writeUInt16(payload, 0, network.pubKeyHash, 'BE');
+      payload.set(o.hash, 2);
+    } else {
+      tools.writeUInt8(payload, 0, network.pubKeyHash);
+      payload.set(o.hash, 1);
+    }
     return bs58check.encode(payload);
   });
   lazy.prop(o, 'hash', () => {

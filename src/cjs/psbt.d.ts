@@ -68,15 +68,24 @@ export declare class Psbt {
     get inputCount(): number;
     get version(): number;
     set version(version: number);
+    get versionGroupId(): number | undefined;
+    set versionGroupId(versionGroupId: number);
+    get consensusBranchId(): number | undefined;
+    set consensusBranchId(consensusBranchId: number);
     get locktime(): number;
     set locktime(locktime: number);
+    get expiryHeight(): number | undefined;
+    set expiryHeight(expiryHeight: number);
     get txInputs(): PsbtTxInput[];
     get txOutputs(): PsbtTxOutput[];
     combine(...those: Psbt[]): this;
     clone(): Psbt;
     setMaximumFeeRate(satoshiPerByte: number): void;
     setVersion(version: number): this;
+    setVersionGroupId(versionGroupId: number): this;
+    setConsensusBranchId(consensusBranchId: number): this;
     setLocktime(locktime: number): this;
+    setExpiryHeight(expiryHeight: number): this;
     setInputSequence(inputIndex: number, sequence: number): this;
     addInputs(inputDatas: PsbtInputExtended[]): this;
     addInput(inputData: PsbtInputExtended): this;
@@ -125,7 +134,19 @@ export declare class Psbt {
     addUnknownKeyValToOutput(outputIndex: number, keyVal: KeyValue): this;
     clearFinalizedInput(inputIndex: number): this;
 }
-type ForkCoin = 'bch' | 'none';
+interface PsbtCache {
+    __NON_WITNESS_UTXO_TX_CACHE: Transaction[];
+    __NON_WITNESS_UTXO_BUF_CACHE: Uint8Array[];
+    __TX_IN_CACHE: {
+        [index: string]: number;
+    };
+    __TX: Transaction;
+    __FEE_RATE?: number;
+    __FEE?: bigint;
+    __EXTRACTED_TX?: Transaction;
+    __UNSAFE_SIGN_NONSEGWIT: boolean;
+}
+type ForkCoin = 'bch' | 'zec' | 'none';
 interface PsbtOptsOptional {
     network?: Network;
     maximumFeeRate?: number;
@@ -204,5 +225,14 @@ type FinalTaprootScriptsFunc = (inputIndex: number, // Which input is it?
 input: PsbtInput, // The PSBT input contents
 tapLeafHashToFinalize?: Uint8Array) => {
     finalScriptWitness: Uint8Array | undefined;
+};
+export declare function getHashForSig(inputIndex: number, input: PsbtInput, inputs: PsbtInput[], cache: PsbtCache, forValidate: boolean, forkCoin: ForkCoin, sighashTypes?: number[]): {
+    script: Uint8Array;
+    hash: Uint8Array;
+    sighashType: number;
+};
+export declare function getScriptAndAmountFromUtxo(inputIndex: number, input: PsbtInput, cache: PsbtCache): {
+    script: Uint8Array;
+    value: bigint;
 };
 type AllScriptType = 'witnesspubkeyhash' | 'pubkeyhash' | 'multisig' | 'pubkey' | 'nonstandard' | 'p2sh-witnesspubkeyhash' | 'p2sh-pubkeyhash' | 'p2sh-multisig' | 'p2sh-pubkey' | 'p2sh-nonstandard' | 'p2wsh-pubkeyhash' | 'p2wsh-multisig' | 'p2wsh-pubkey' | 'p2wsh-nonstandard' | 'p2sh-p2wsh-pubkeyhash' | 'p2sh-p2wsh-multisig' | 'p2sh-p2wsh-pubkey' | 'p2sh-p2wsh-nonstandard';

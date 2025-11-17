@@ -43,4 +43,8 @@ export declare const UInt8Schema: v.SchemaWithPipe<[v.NumberSchema<undefined>, v
 export declare const UInt32Schema: v.SchemaWithPipe<[v.NumberSchema<undefined>, v.IntegerAction<number, undefined>, v.MinValueAction<number, 0, undefined>, v.MaxValueAction<number, 4294967295, undefined>]>;
 export declare const UInt53Schema: v.SchemaWithPipe<[v.NumberSchema<undefined>, v.IntegerAction<number, undefined>, v.MinValueAction<number, 0, undefined>, v.MaxValueAction<number, 9007199254740991, undefined>]>;
 export declare const SatoshiSchema: v.SchemaWithPipe<[v.BigintSchema<undefined>, v.MinValueAction<bigint, 0n, undefined>, v.MaxValueAction<bigint, 9223372036854775807n, undefined>]>;
+export declare const OutputSchema: v.ObjectSchema<{
+    readonly script: v.InstanceSchema<Uint8ArrayConstructor, undefined>;
+    readonly value: v.SchemaWithPipe<[v.BigintSchema<undefined>, v.MinValueAction<bigint, 0n, undefined>, v.MaxValueAction<bigint, 9223372036854775807n, undefined>]>;
+}, undefined>;
 export declare const NullablePartial: (a: Record<string, any>) => v.ObjectSchema<{}, undefined>;

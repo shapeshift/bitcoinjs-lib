@@ -47,6 +47,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 exports.TAGGED_HASH_PREFIXES = exports.TAGS = void 0;
 exports.hash160 = hash160;
 exports.hash256 = hash256;
+exports.blake256 = blake256;
 exports.taggedHash = taggedHash;
 /**
  * A module for hashing functions.
@@ -54,6 +55,7 @@ exports.taggedHash = taggedHash;
  *
  * @packageDocumentation
  */
+const blake2b_1 = require('@noble/hashes/blake2b');
 const ripemd160_1 = require('@noble/hashes/ripemd160');
 const sha256_1 = require('@noble/hashes/sha256');
 const tools = __importStar(require('uint8array-tools'));
@@ -74,6 +76,23 @@ function hash160(buffer) {
  */
 function hash256(buffer) {
   return (0, sha256_1.sha256)((0, sha256_1.sha256)(buffer));
+}
+/**
+ * Computes the Blake2b-256 hash of the given buffer.
+ *
+ * @param buffer - The input data to be hashed.
+ * @param personalization - Optional personalization string or bytes (max 16 bytes) for domain separation.
+ * @returns The Blake2b-256 hash of the input buffer.
+ */
+function blake256(buffer, personalization) {
+  if (!personalization) return (0, blake2b_1.blake2b)(buffer, { dkLen: 32 });
+  return (0, blake2b_1.blake2b)(buffer, {
+    dkLen: 32,
+    personalization:
+      typeof personalization === 'string'
+        ? tools.fromUtf8(personalization)
+        : personalization,
+  });
 }
 exports.TAGS = [
   'BIP0340/challenge',

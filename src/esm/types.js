@@ -80,6 +80,10 @@ export const SatoshiSchema = v.pipe(
   v.minValue(0n),
   v.maxValue(0x7fffffffffffffffn),
 );
+export const OutputSchema = v.object({
+  script: BufferSchema,
+  value: SatoshiSchema,
+});
 export const NullablePartial = a =>
   v.object(
     Object.entries(a).reduce(

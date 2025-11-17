@@ -149,11 +149,29 @@ export class Psbt {
   set version(version) {
     this.setVersion(version);
   }
+  get versionGroupId() {
+    return this.__CACHE.__TX.versionGroupId;
+  }
+  set versionGroupId(versionGroupId) {
+    this.setVersionGroupId(versionGroupId);
+  }
+  get consensusBranchId() {
+    return this.__CACHE.__TX.consensusBranchId;
+  }
+  set consensusBranchId(consensusBranchId) {
+    this.setConsensusBranchId(consensusBranchId);
+  }
   get locktime() {
     return this.__CACHE.__TX.locktime;
   }
   set locktime(locktime) {
     this.setLocktime(locktime);
+  }
+  get expiryHeight() {
+    return this.__CACHE.__TX.expiryHeight;
+  }
+  set expiryHeight(expiryHeight) {
+    this.setExpiryHeight(expiryHeight);
   }
   get txInputs() {
     return this.__CACHE.__TX.ins.map(input => ({
@@ -197,11 +215,37 @@ export class Psbt {
     c.__EXTRACTED_TX = undefined;
     return this;
   }
+  setVersionGroupId(versionGroupId) {
+    check32Bit(versionGroupId);
+    checkInputsForPartialSig(this.data.inputs, 'setVersionGroupId');
+    const c = this.__CACHE;
+    c.__TX.versionGroupId = versionGroupId;
+    c.__TX.overwintered = true;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
+  setConsensusBranchId(consensusBranchId) {
+    check32Bit(consensusBranchId);
+    checkInputsForPartialSig(this.data.inputs, 'setConsensusBranchId');
+    const c = this.__CACHE;
+    c.__TX.consensusBranchId = consensusBranchId;
+    c.__TX.overwintered = true;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
   setLocktime(locktime) {
     check32Bit(locktime);
     checkInputsForPartialSig(this.data.inputs, 'setLocktime');
     const c = this.__CACHE;
     c.__TX.locktime = locktime;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
+  setExpiryHeight(expiryHeight) {
+    check32Bit(expiryHeight);
+    checkInputsForPartialSig(this.data.inputs, 'setExpiryHeight');
+    const c = this.__CACHE;
+    c.__TX.expiryHeight = expiryHeight;
     c.__EXTRACTED_TX = undefined;
     return this;
   }
@@ -462,6 +506,7 @@ export class Psbt {
           ? getHashForSig(
               inputIndex,
               Object.assign({}, input, { sighashType: sig.hashType }),
+              this.data.inputs,
               this.__CACHE,
               true,
               this.opts.forkCoin,
@@ -1188,6 +1233,7 @@ function getHashAndSighashType(
   const { hash, sighashType, script } = getHashForSig(
     inputIndex,
     input,
+    inputs,
     cache,
     false,
     forkCoin,
@@ -1203,13 +1249,15 @@ function getDefaultSighash(forkCoin) {
   switch (forkCoin) {
     case 'bch':
       return BCH_SIGHASH_ALL;
+    case 'zec':
     case 'none':
       return Transaction.SIGHASH_ALL;
   }
 }
-function getHashForSig(
+export function getHashForSig(
   inputIndex,
   input,
+  inputs,
   cache,
   forValidate,
   forkCoin,
@@ -1288,15 +1336,33 @@ function getHashForSig(
           'BIP174 compliant.\n*********************\nPROCEED WITH CAUTION!\n' +
           '*********************',
       );
-    // Bitcoin Cash uses the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
+    // Bitcoin Cash and Zcash use the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
     // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
-    if (isForkId) {
-      hash = unsignedTx.hashForWitnessV0(
-        inputIndex,
-        meaningfulScript,
-        prevout.value,
-        sighashType,
-      );
+    if (isForkId || forkCoin === 'zec') {
+      if (unsignedTx.overwintered) {
+        // Zcash v5 uses ZIP-244 signature hashing algorithm
+        if (unsignedTx.version === 5) {
+          const prevOuts = inputs.map((i, index) =>
+            getScriptAndAmountFromUtxo(index, i, cache),
+          );
+          hash = unsignedTx.hashForWitnessV5(inputIndex, prevOuts, sighashType);
+        } else {
+          // Zcash v3/v4 uses ZIP-243 signature hashing algorithm
+          hash = unsignedTx.hashForWitnessV4(
+            inputIndex,
+            meaningfulScript,
+            prevout.value,
+            sighashType,
+          );
+        }
+      } else {
+        hash = unsignedTx.hashForWitnessV0(
+          inputIndex,
+          meaningfulScript,
+          prevout.value,
+          sighashType,
+        );
+      }
     } else {
       hash = unsignedTx.hashForSignature(
         inputIndex,
@@ -1622,7 +1688,7 @@ function getScriptFromUtxo(inputIndex, input, cache) {
   const { script } = getScriptAndAmountFromUtxo(inputIndex, input, cache);
   return script;
 }
-function getScriptAndAmountFromUtxo(inputIndex, input, cache) {
+export function getScriptAndAmountFromUtxo(inputIndex, input, cache) {
   if (input.witnessUtxo !== undefined) {
     return {
       script: input.witnessUtxo.script,
