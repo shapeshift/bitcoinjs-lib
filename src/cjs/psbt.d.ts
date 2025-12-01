@@ -134,18 +134,6 @@ export declare class Psbt {
     addUnknownKeyValToOutput(outputIndex: number, keyVal: KeyValue): this;
     clearFinalizedInput(inputIndex: number): this;
 }
-interface PsbtCache {
-    __NON_WITNESS_UTXO_TX_CACHE: Transaction[];
-    __NON_WITNESS_UTXO_BUF_CACHE: Uint8Array[];
-    __TX_IN_CACHE: {
-        [index: string]: number;
-    };
-    __TX: Transaction;
-    __FEE_RATE?: number;
-    __FEE?: bigint;
-    __EXTRACTED_TX?: Transaction;
-    __UNSAFE_SIGN_NONSEGWIT: boolean;
-}
 type ForkCoin = 'bch' | 'zec' | 'none';
 interface PsbtOptsOptional {
     network?: Network;
@@ -225,14 +213,5 @@ type FinalTaprootScriptsFunc = (inputIndex: number, // Which input is it?
 input: PsbtInput, // The PSBT input contents
 tapLeafHashToFinalize?: Uint8Array) => {
     finalScriptWitness: Uint8Array | undefined;
-};
-export declare function getHashForSig(inputIndex: number, input: PsbtInput, inputs: PsbtInput[], cache: PsbtCache, forValidate: boolean, forkCoin: ForkCoin, sighashTypes?: number[]): {
-    script: Uint8Array;
-    hash: Uint8Array;
-    sighashType: number;
-};
-export declare function getScriptAndAmountFromUtxo(inputIndex: number, input: PsbtInput, cache: PsbtCache): {
-    script: Uint8Array;
-    value: bigint;
 };
 type AllScriptType = 'witnesspubkeyhash' | 'pubkeyhash' | 'multisig' | 'pubkey' | 'nonstandard' | 'p2sh-witnesspubkeyhash' | 'p2sh-pubkeyhash' | 'p2sh-multisig' | 'p2sh-pubkey' | 'p2sh-nonstandard' | 'p2wsh-pubkeyhash' | 'p2wsh-multisig' | 'p2wsh-pubkey' | 'p2wsh-nonstandard' | 'p2sh-p2wsh-pubkeyhash' | 'p2sh-p2wsh-multisig' | 'p2sh-p2wsh-pubkey' | 'p2sh-p2wsh-nonstandard';

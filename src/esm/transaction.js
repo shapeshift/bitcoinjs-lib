@@ -570,19 +570,10 @@ export class Transaction {
       bufferWriter.writeVarSlice(output.script);
       hashOutputs = bcrypto.hash256(tbuffer);
     }
-    const isZcashSapling =
-      this.version === 4 && this.versionGroupId !== undefined;
-    tbuffer = new Uint8Array(
-      (isZcashSapling ? 268 : 156) + varSliceSize(prevOutScript),
-    );
+    tbuffer = new Uint8Array(156 + varSliceSize(prevOutScript));
     bufferWriter = new BufferWriter(tbuffer, 0);
-    bufferWriter.writeUInt32(
-      isZcashSapling ? (this.version | 0x80000000) >>> 0 : this.version,
-    );
-    if (isZcashSapling) {
-      bufferWriter.writeUInt32(this.versionGroupId);
-    }
     const input = this.ins[inIndex];
+    bufferWriter.writeUInt32(this.version);
     bufferWriter.writeSlice(hashPrevouts);
     bufferWriter.writeSlice(hashSequence);
     bufferWriter.writeSlice(input.hash);
@@ -591,20 +582,11 @@ export class Transaction {
     bufferWriter.writeInt64(value);
     bufferWriter.writeUInt32(input.sequence);
     bufferWriter.writeSlice(hashOutputs);
-    if (isZcashSapling) {
-      bufferWriter.writeSlice(ZERO); // hashJoinSplits
-      bufferWriter.writeSlice(ZERO); // hashShieldedSpends
-      bufferWriter.writeSlice(ZERO); // hashShieldedOutput
-    }
     bufferWriter.writeUInt32(this.locktime);
-    if (isZcashSapling) {
-      bufferWriter.writeUInt32(this.expiryHeight ?? 0);
-      bufferWriter.writeInt64(0); // valueBalance
-    }
     bufferWriter.writeUInt32(hashType);
     return bcrypto.hash256(tbuffer);
   }
-  hashForWitnessV4(inIndex, prevOutScript, value, hashType) {
+  hashForZIP243(inIndex, prevOutScript, value, hashType) {
     v.parse(
       v.tuple([
         types.UInt32Schema,
@@ -622,7 +604,7 @@ export class Transaction {
       hashType,
     );
   }
-  hashForWitnessV5(inIndex, prevOuts, hashType) {
+  hashForZIP244(inIndex, prevOuts, hashType) {
     v.parse(
       v.tuple([
         types.UInt32Schema,

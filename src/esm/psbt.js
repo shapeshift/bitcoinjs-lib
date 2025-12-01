@@ -1254,7 +1254,7 @@ function getDefaultSighash(forkCoin) {
       return Transaction.SIGHASH_ALL;
   }
 }
-export function getHashForSig(
+function getHashForSig(
   inputIndex,
   input,
   inputs,
@@ -1345,10 +1345,10 @@ export function getHashForSig(
           const prevOuts = inputs.map((i, index) =>
             getScriptAndAmountFromUtxo(index, i, cache),
           );
-          hash = unsignedTx.hashForWitnessV5(inputIndex, prevOuts, sighashType);
+          hash = unsignedTx.hashForZIP244(inputIndex, prevOuts, sighashType);
         } else {
           // Zcash v3/v4 uses ZIP-243 signature hashing algorithm
-          hash = unsignedTx.hashForWitnessV4(
+          hash = unsignedTx.hashForZIP243(
             inputIndex,
             meaningfulScript,
             prevout.value,
@@ -1688,7 +1688,7 @@ function getScriptFromUtxo(inputIndex, input, cache) {
   const { script } = getScriptAndAmountFromUtxo(inputIndex, input, cache);
   return script;
 }
-export function getScriptAndAmountFromUtxo(inputIndex, input, cache) {
+function getScriptAndAmountFromUtxo(inputIndex, input, cache) {
   if (input.witnessUtxo !== undefined) {
     return {
       script: input.witnessUtxo.script,

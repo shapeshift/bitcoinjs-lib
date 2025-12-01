@@ -45,8 +45,6 @@ var __importStar =
   };
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.Psbt = exports.toXOnly = void 0;
-exports.getHashForSig = getHashForSig;
-exports.getScriptAndAmountFromUtxo = getScriptAndAmountFromUtxo;
 const bip174_1 = require('bip174');
 const varuint = __importStar(require('varuint-bitcoin'));
 const bip174_2 = require('bip174');
@@ -1408,10 +1406,10 @@ function getHashForSig(
           const prevOuts = inputs.map((i, index) =>
             getScriptAndAmountFromUtxo(index, i, cache),
           );
-          hash = unsignedTx.hashForWitnessV5(inputIndex, prevOuts, sighashType);
+          hash = unsignedTx.hashForZIP244(inputIndex, prevOuts, sighashType);
         } else {
           // Zcash v3/v4 uses ZIP-243 signature hashing algorithm
-          hash = unsignedTx.hashForWitnessV4(
+          hash = unsignedTx.hashForZIP243(
             inputIndex,
             meaningfulScript,
             prevout.value,
