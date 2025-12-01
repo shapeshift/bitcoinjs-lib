@@ -29,7 +29,7 @@ jobs:
           command: yarn test
       - when:
           condition:
-            equal: [ v7.0.0-rc.0, << pipeline.git.branch >> ]
+            equal: [ v7.0.0, << pipeline.git.branch >> ]
           steps:
             - add_ssh_keys
             - run:
