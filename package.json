@@ -1,6 +1,6 @@
 {
   "name": "@shapeshiftoss/bitcoinjs-lib",
-  "version": "7.0.0-shapeshift.0",
+  "version": "7.0.0-shapeshift.1",
   "description": "Client-side Bitcoin JavaScript library",
   "type": "module",
   "main": "./src/cjs/index.cjs",
