@@ -10,16 +10,7 @@ jobs:
       - run:
           name: Authenticate with registry
           command: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-      - restore_cache:
-          name: Restore Yarn Package Cache
-          keys:
-            - yarn-cache-{{ checksum "yarn.lock" }}
-      - run: yarn --frozen-lockfile --cache-folder ./.yarn-cache
-      - save_cache:
-          name: Save Yarn Package Cache
-          key: yarn-cache-{{ checksum "yarn.lock" }}
-          paths:
-            - ./.yarn-cache
+      - run: yarn --frozen-lockfile
       - run:
           no_output_timeout: 30m
           name: Build
