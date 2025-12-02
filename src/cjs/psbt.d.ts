@@ -68,15 +68,24 @@ export declare class Psbt {
     get inputCount(): number;
     get version(): number;
     set version(version: number);
+    get versionGroupId(): number | undefined;
+    set versionGroupId(versionGroupId: number);
+    get consensusBranchId(): number | undefined;
+    set consensusBranchId(consensusBranchId: number);
     get locktime(): number;
     set locktime(locktime: number);
+    get expiryHeight(): number | undefined;
+    set expiryHeight(expiryHeight: number);
     get txInputs(): PsbtTxInput[];
     get txOutputs(): PsbtTxOutput[];
     combine(...those: Psbt[]): this;
     clone(): Psbt;
     setMaximumFeeRate(satoshiPerByte: number): void;
     setVersion(version: number): this;
+    setVersionGroupId(versionGroupId: number): this;
+    setConsensusBranchId(consensusBranchId: number): this;
     setLocktime(locktime: number): this;
+    setExpiryHeight(expiryHeight: number): this;
     setInputSequence(inputIndex: number, sequence: number): this;
     addInputs(inputDatas: PsbtInputExtended[]): this;
     addInput(inputData: PsbtInputExtended): this;
@@ -125,7 +134,7 @@ export declare class Psbt {
     addUnknownKeyValToOutput(outputIndex: number, keyVal: KeyValue): this;
     clearFinalizedInput(inputIndex: number): this;
 }
-type ForkCoin = 'bch' | 'none';
+type ForkCoin = 'bch' | 'zec' | 'none';
 interface PsbtOptsOptional {
     network?: Network;
     maximumFeeRate?: number;

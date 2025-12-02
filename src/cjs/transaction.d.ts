@@ -1,3 +1,5 @@
+export declare function varSliceSize(someScript: Uint8Array): number;
+export declare const ZERO: Uint8Array;
 export interface Output {
     script: Uint8Array;
     value: bigint;
@@ -31,6 +33,11 @@ export declare class Transaction {
     locktime: number;
     ins: Input[];
     outs: Output[];
+    overwintered: boolean;
+    versionGroupId?: number;
+    consensusBranchId?: number;
+    expiryHeight?: number;
+    valueBalance?: bigint;
     isCoinbase(): boolean;
     addInput(hash: Uint8Array, index: number, sequence?: number, scriptSig?: Uint8Array): number;
     addOutput(scriptPubKey: Uint8Array, value: bigint): number;
@@ -51,6 +58,8 @@ export declare class Transaction {
     hashForSignature(inIndex: number, prevOutScript: Uint8Array, hashType: number): Uint8Array;
     hashForWitnessV1(inIndex: number, prevOutScripts: Uint8Array[], values: bigint[], hashType: number, leafHash?: Uint8Array, annex?: Uint8Array): Uint8Array;
     hashForWitnessV0(inIndex: number, prevOutScript: Uint8Array, value: bigint, hashType: number): Uint8Array;
+    hashForZIP243(inIndex: number, prevOutScript: Uint8Array, value: bigint, hashType: number): Uint8Array;
+    hashForZIP244(inIndex: number, prevOuts: Output[], hashType: number): Uint8Array;
     getHash(forWitness?: boolean): Uint8Array;
     getId(): string;
     toBuffer(buffer?: Uint8Array, initialOffset?: number): Uint8Array;

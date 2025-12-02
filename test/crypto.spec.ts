@@ -4,7 +4,10 @@ import { crypto as bcrypto } from '@shapeshiftoss/bitcoinjs-lib';
 import type { TaggedHashPrefix } from '@shapeshiftoss/bitcoinjs-lib';
 import fixtures from './fixtures/crypto.json';
 import * as tools from 'uint8array-tools';
-import { TAGS, TAGGED_HASH_PREFIXES } from 'bitcoinjs-lib/src/crypto';
+import {
+  TAGS,
+  TAGGED_HASH_PREFIXES,
+} from '@shapeshiftoss/bitcoinjs-lib/src/crypto';
 import { sha256 } from '@noble/hashes/sha256';
 
 describe('crypto', () => {

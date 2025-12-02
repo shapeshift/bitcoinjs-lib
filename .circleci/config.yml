@@ -10,16 +10,7 @@ jobs:
       - run:
           name: Authenticate with registry
           command: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-      - restore_cache:
-          name: Restore Yarn Package Cache
-          keys:
-            - yarn-cache-{{ checksum "yarn.lock" }}
-      - run: yarn --frozen-lockfile --cache-folder ./.yarn-cache
-      - save_cache:
-          name: Save Yarn Package Cache
-          key: yarn-cache-{{ checksum "yarn.lock" }}
-          paths:
-            - ./.yarn-cache
+      - run: yarn --frozen-lockfile
       - run:
           no_output_timeout: 30m
           name: Build
@@ -29,7 +20,7 @@ jobs:
           command: yarn test
       - when:
           condition:
-            equal: [ v7.0.0-rc.0, << pipeline.git.branch >> ]
+            equal: [ v7.0.0, << pipeline.git.branch >> ]
           steps:
             - add_ssh_keys
             - run:
@@ -39,7 +30,8 @@ jobs:
                 name: Set git user
                 command: |
                   git config --global -l
-                  git config --global user.name "${CIRCLE_PROJECT_USERNAME}"
+                  git config --global user.name "CircleCI Bot"
+                  git config --global user.email "ci@circleci.com"
             - run:
                 name: Bump Version
                 command: |

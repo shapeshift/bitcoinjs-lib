@@ -4,6 +4,7 @@
  *
  * @packageDocumentation
  */
+import { blake2b } from '@noble/hashes/blake2b';
 import { ripemd160 } from '@noble/hashes/ripemd160';
 import { sha256 } from '@noble/hashes/sha256';
 import * as tools from 'uint8array-tools';
@@ -26,6 +27,28 @@ export function hash160(buffer: Uint8Array): Uint8Array {
  */
 export function hash256(buffer: Uint8Array): Uint8Array {
   return sha256(sha256(buffer));
+}
+
+/**
+ * Computes the Blake2b-256 hash of the given buffer.
+ *
+ * @param buffer - The input data to be hashed.
+ * @param personalization - Optional personalization string or bytes (max 16 bytes) for domain separation.
+ * @returns The Blake2b-256 hash of the input buffer.
+ */
+export function blake256(
+  buffer: Uint8Array,
+  personalization?: string | Uint8Array,
+): Uint8Array {
+  if (!personalization) return blake2b(buffer, { dkLen: 32 });
+
+  return blake2b(buffer, {
+    dkLen: 32,
+    personalization:
+      typeof personalization === 'string'
+        ? tools.fromUtf8(personalization)
+        : personalization,
+  });
 }
 
 export const TAGS = [

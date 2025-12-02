@@ -210,12 +210,36 @@ export class Psbt {
     this.setVersion(version);
   }
 
+  get versionGroupId(): number | undefined {
+    return this.__CACHE.__TX.versionGroupId;
+  }
+
+  set versionGroupId(versionGroupId: number) {
+    this.setVersionGroupId(versionGroupId);
+  }
+
+  get consensusBranchId(): number | undefined {
+    return this.__CACHE.__TX.consensusBranchId;
+  }
+
+  set consensusBranchId(consensusBranchId: number) {
+    this.setConsensusBranchId(consensusBranchId);
+  }
+
   get locktime(): number {
     return this.__CACHE.__TX.locktime;
   }
 
   set locktime(locktime: number) {
     this.setLocktime(locktime);
+  }
+
+  get expiryHeight(): number | undefined {
+    return this.__CACHE.__TX.expiryHeight;
+  }
+
+  set expiryHeight(expiryHeight: number) {
+    this.setExpiryHeight(expiryHeight);
   }
 
   get txInputs(): PsbtTxInput[] {
@@ -266,11 +290,40 @@ export class Psbt {
     return this;
   }
 
+  setVersionGroupId(versionGroupId: number): this {
+    check32Bit(versionGroupId);
+    checkInputsForPartialSig(this.data.inputs, 'setVersionGroupId');
+    const c = this.__CACHE;
+    c.__TX.versionGroupId = versionGroupId;
+    c.__TX.overwintered = true;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
+
+  setConsensusBranchId(consensusBranchId: number): this {
+    check32Bit(consensusBranchId);
+    checkInputsForPartialSig(this.data.inputs, 'setConsensusBranchId');
+    const c = this.__CACHE;
+    c.__TX.consensusBranchId = consensusBranchId;
+    c.__TX.overwintered = true;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
+
   setLocktime(locktime: number): this {
     check32Bit(locktime);
     checkInputsForPartialSig(this.data.inputs, 'setLocktime');
     const c = this.__CACHE;
     c.__TX.locktime = locktime;
+    c.__EXTRACTED_TX = undefined;
+    return this;
+  }
+
+  setExpiryHeight(expiryHeight: number): this {
+    check32Bit(expiryHeight);
+    checkInputsForPartialSig(this.data.inputs, 'setExpiryHeight');
+    const c = this.__CACHE;
+    c.__TX.expiryHeight = expiryHeight;
     c.__EXTRACTED_TX = undefined;
     return this;
   }
@@ -587,6 +640,7 @@ export class Psbt {
           ? getHashForSig(
               inputIndex,
               Object.assign({}, input, { sighashType: sig.hashType }),
+              this.data.inputs,
               this.__CACHE,
               true,
               this.opts.forkCoin,
@@ -1168,7 +1222,7 @@ interface PsbtCache {
   __UNSAFE_SIGN_NONSEGWIT: boolean;
 }
 
-type ForkCoin = 'bch' | 'none';
+type ForkCoin = 'bch' | 'zec' | 'none';
 
 interface PsbtOptsOptional {
   network?: Network;
@@ -1625,6 +1679,7 @@ function getHashAndSighashType(
   const { hash, sighashType, script } = getHashForSig(
     inputIndex,
     input,
+    inputs,
     cache,
     false,
     forkCoin,
@@ -1641,6 +1696,7 @@ function getDefaultSighash(forkCoin: ForkCoin): number {
   switch (forkCoin) {
     case 'bch':
       return BCH_SIGHASH_ALL;
+    case 'zec':
     case 'none':
       return Transaction.SIGHASH_ALL;
   }
@@ -1649,6 +1705,7 @@ function getDefaultSighash(forkCoin: ForkCoin): number {
 function getHashForSig(
   inputIndex: number,
   input: PsbtInput,
+  inputs: PsbtInput[],
   cache: PsbtCache,
   forValidate: boolean,
   forkCoin: ForkCoin,
@@ -1740,15 +1797,33 @@ function getHashForSig(
           '*********************',
       );
 
-    // Bitcoin Cash uses the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
+    // Bitcoin Cash and Zcash use the BIP143 signature hashing algorithm, originally designed for SegWit (witness version 0) in Bitcoin
     // https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
-    if (isForkId) {
-      hash = unsignedTx.hashForWitnessV0(
-        inputIndex,
-        meaningfulScript,
-        prevout.value,
-        sighashType,
-      );
+    if (isForkId || forkCoin === 'zec') {
+      if (unsignedTx.overwintered) {
+        // Zcash v5 uses ZIP-244 signature hashing algorithm
+        if (unsignedTx.version === 5) {
+          const prevOuts: Output[] = inputs.map((i, index) =>
+            getScriptAndAmountFromUtxo(index, i, cache),
+          );
+          hash = unsignedTx.hashForZIP244(inputIndex, prevOuts, sighashType);
+        } else {
+          // Zcash v3/v4 uses ZIP-243 signature hashing algorithm
+          hash = unsignedTx.hashForZIP243(
+            inputIndex,
+            meaningfulScript,
+            prevout.value,
+            sighashType,
+          );
+        }
+      } else {
+        hash = unsignedTx.hashForWitnessV0(
+          inputIndex,
+          meaningfulScript,
+          prevout.value,
+          sighashType,
+        );
+      }
     } else {
       hash = unsignedTx.hashForSignature(
         inputIndex,

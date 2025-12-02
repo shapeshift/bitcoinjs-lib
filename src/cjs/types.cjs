@@ -45,6 +45,7 @@ var __importStar =
   };
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.NullablePartial =
+  exports.OutputSchema =
   exports.SatoshiSchema =
   exports.UInt53Schema =
   exports.UInt32Schema =
@@ -144,6 +145,10 @@ exports.SatoshiSchema = v.pipe(
   v.minValue(0n),
   v.maxValue(0x7fffffffffffffffn),
 );
+exports.OutputSchema = v.object({
+  script: exports.BufferSchema,
+  value: exports.SatoshiSchema,
+});
 const NullablePartial = a =>
   v.object(
     Object.entries(a).reduce(

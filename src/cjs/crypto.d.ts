@@ -12,6 +12,14 @@ export declare function hash160(buffer: Uint8Array): Uint8Array;
  * @returns The double SHA-256 hash of the input buffer.
  */
 export declare function hash256(buffer: Uint8Array): Uint8Array;
+/**
+ * Computes the Blake2b-256 hash of the given buffer.
+ *
+ * @param buffer - The input data to be hashed.
+ * @param personalization - Optional personalization string or bytes (max 16 bytes) for domain separation.
+ * @returns The Blake2b-256 hash of the input buffer.
+ */
+export declare function blake256(buffer: Uint8Array, personalization?: string | Uint8Array): Uint8Array;
 export declare const TAGS: readonly ["BIP0340/challenge", "BIP0340/aux", "BIP0340/nonce", "TapLeaf", "TapBranch", "TapSighash", "TapTweak", "KeyAgg list", "KeyAgg coefficient"];
 export type TaggedHashPrefix = (typeof TAGS)[number];
 type TaggedHashPrefixes = {

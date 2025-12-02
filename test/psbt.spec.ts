@@ -6,9 +6,12 @@ import ECPairFactory from 'ecpair';
 import { describe, it } from 'mocha';
 
 import { convertScriptTree } from './payments.utils.js';
-import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341';
-import { tapTreeToList, tapTreeFromList } from 'bitcoinjs-lib/src/psbt/bip371';
-import type { Taptree } from 'bitcoinjs-lib/src/types';
+import { LEAF_VERSION_TAPSCRIPT } from '@shapeshiftoss/bitcoinjs-lib/src/payments/bip341';
+import {
+  tapTreeToList,
+  tapTreeFromList,
+} from '@shapeshiftoss/bitcoinjs-lib/src/psbt/bip371';
+import type { Taptree } from '@shapeshiftoss/bitcoinjs-lib/src/types';
 import { initEccLib } from '@shapeshiftoss/bitcoinjs-lib';
 import * as tools from 'uint8array-tools';
 
