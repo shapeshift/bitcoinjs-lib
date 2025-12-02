@@ -1,4 +1,4 @@
-import { initEccLib } from 'bitcoinjs-lib';
+import { initEccLib } from '@shapeshiftoss/bitcoinjs-lib';
 import { describe, test } from 'mocha';
 import * as assert from 'assert';
 

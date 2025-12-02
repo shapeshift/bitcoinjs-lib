@@ -1,4 +1,4 @@
-import { toXOnly } from 'bitcoinjs-lib';
+import { toXOnly } from '@shapeshiftoss/bitcoinjs-lib';
 import * as assert from 'assert';
 
 describe('toXOnly', () => {

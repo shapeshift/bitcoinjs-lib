@@ -6,17 +6,17 @@ import { describe, it } from 'mocha';
 import { PsbtInput, TapLeaf, TapLeafScript } from 'bip174';
 import { regtestUtils } from './_regtest.js';
 import * as bitcoin from '@shapeshiftoss/bitcoinjs-lib';
-import { Taptree } from 'bitcoinjs-lib/src/types';
+import { Taptree } from '@shapeshiftoss/bitcoinjs-lib/src/types';
 import {
   LEAF_VERSION_TAPSCRIPT,
   tapleafHash,
-} from 'bitcoinjs-lib/src/payments/bip341';
+} from '@shapeshiftoss/bitcoinjs-lib/src/payments/bip341';
 import {
   toXOnly,
   tapTreeToList,
   tapTreeFromList,
-} from 'bitcoinjs-lib/src/psbt/bip371';
-import { witnessStackToScriptWitness } from 'bitcoinjs-lib/src/psbt/psbtutils';
+} from '@shapeshiftoss/bitcoinjs-lib/src/psbt/bip371';
+import { witnessStackToScriptWitness } from '@shapeshiftoss/bitcoinjs-lib/src/psbt/psbtutils';
 import * as tools from 'uint8array-tools';
 import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from 'crypto';
@@ -783,8 +783,8 @@ function buildLeafIndexFinalizer(
         Uint8Array.from([leafIndex]),
       ];
       const witness = scriptSolution
-        .concat(tapLeafScript.script)
-        .concat(tapLeafScript.controlBlock);
+        .concat(Buffer.from(tapLeafScript.script))
+        .concat(Buffer.from(tapLeafScript.controlBlock));
       return { finalScriptWitness: witnessStackToScriptWitness(witness) };
     } catch (err) {
       throw new Error(`Can not finalize taproot input #${inputIndex}: ${err}`);

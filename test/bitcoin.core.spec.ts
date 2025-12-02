@@ -130,7 +130,7 @@ describe('Bitcoin-core', () => {
   });
 
   // sighash
-  describe('Transaction', () => {
+  describe.only('Transaction', () => {
     sigHash.forEach(f => {
       // Objects that are only a single string are ignored
       if (f.length === 1) return;

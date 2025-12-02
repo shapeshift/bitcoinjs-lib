@@ -104,9 +104,14 @@ class Transaction {
     const bufferReader = new bufferutils_js_1.BufferReader(buffer);
     const tx = new Transaction();
     const header = bufferReader.readUInt32();
-    tx.version = header & 0x7fffffff;
+    // Zcash uses the high bit as an "overwintered" flag for versions 3, 4, and 5
+    const version = header & 0x7fffffff;
+    tx.overwintered =
+      [3, 4, 5].includes(version) && (header & 0x80000000) !== 0;
+    // For Zcash overwintered txs, version excludes the flag bit
+    // For Bitcoin txs, preserve the full 32-bit value
+    tx.version = tx.overwintered ? version : header;
     let hasWitnesses = false;
-    tx.overwintered = (header & 0x80000000) !== 0;
     if (tx.overwintered) {
       tx.versionGroupId = bufferReader.readUInt32();
       if (tx.version === 5) {
