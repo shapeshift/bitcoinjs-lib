@@ -590,10 +590,13 @@ export class Psbt {
     );
   }
 
-  validateSignaturesOfAllInputs(validator: ValidateSigFunction): boolean {
+  validateSignaturesOfAllInputs(
+    validator: ValidateSigFunction,
+    singleHash = false,
+  ): boolean {
     checkForInput(this.data.inputs, 0); // making sure we have at least one
     const results = range(this.data.inputs.length).map(idx =>
-      this.validateSignaturesOfInput(idx, validator),
+      this.validateSignaturesOfInput(idx, validator, undefined, singleHash),
     );
     return results.reduce((final, res) => res === true && final, true);
   }
@@ -602,6 +605,7 @@ export class Psbt {
     inputIndex: number,
     validator: ValidateSigFunction,
     pubkey?: Uint8Array,
+    singleHash = false,
   ): boolean {
     const input = this.data.inputs[inputIndex];
     if (isTaprootInput(input))
@@ -611,12 +615,18 @@ export class Psbt {
         pubkey,
       );
 
-    return this._validateSignaturesOfInput(inputIndex, validator, pubkey);
+    return this._validateSignaturesOfInput(
+      inputIndex,
+      validator,
+      singleHash,
+      pubkey,
+    );
   }
 
   private _validateSignaturesOfInput(
     inputIndex: number,
     validator: ValidateSigFunction,
+    singleHash: boolean,
     pubkey?: Uint8Array,
   ): boolean {
     const input = this.data.inputs[inputIndex];
@@ -644,6 +654,7 @@ export class Psbt {
               this.__CACHE,
               true,
               this.opts.forkCoin,
+              singleHash,
             )
           : { hash: hashCache!, script: scriptCache! };
       sighashCache = sig.hashType;
@@ -868,6 +879,7 @@ export class Psbt {
     inputIndex: number,
     keyPair: Signer,
     sighashTypes?: number[],
+    singleHash = false,
   ): this {
     if (!keyPair || !keyPair.publicKey)
       throw new Error('Need Signer to sign input');
@@ -883,7 +895,7 @@ export class Psbt {
         sighashTypes,
       );
     }
-    return this._signInput(inputIndex, keyPair, sighashTypes);
+    return this._signInput(inputIndex, keyPair, sighashTypes, singleHash);
   }
 
   signTaprootInput(
@@ -911,6 +923,7 @@ export class Psbt {
     inputIndex: number,
     keyPair: Signer,
     sighashTypes: number[] = DEFAULT_SIGHASHES,
+    singleHash: boolean,
   ): this {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
@@ -919,6 +932,7 @@ export class Psbt {
       this.__CACHE,
       sighashTypes,
       this.opts.forkCoin,
+      singleHash,
     );
 
     const partialSig = [
@@ -988,6 +1002,7 @@ export class Psbt {
     inputIndex: number,
     keyPair: Signer | SignerAsync,
     sighashTypes?: number[],
+    singleHash = false,
   ): Promise<void> {
     return Promise.resolve().then(() => {
       if (!keyPair || !keyPair.publicKey)
@@ -1003,7 +1018,12 @@ export class Psbt {
           sighashTypes,
         );
 
-      return this._signInputAsync(inputIndex, keyPair, sighashTypes);
+      return this._signInputAsync(
+        inputIndex,
+        keyPair,
+        sighashTypes,
+        singleHash,
+      );
     });
   }
 
@@ -1035,6 +1055,7 @@ export class Psbt {
     inputIndex: number,
     keyPair: Signer | SignerAsync,
     sighashTypes: number[] = DEFAULT_SIGHASHES,
+    singleHash: boolean,
   ): Promise<void> {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
@@ -1043,6 +1064,7 @@ export class Psbt {
       this.__CACHE,
       sighashTypes,
       this.opts.forkCoin,
+      singleHash,
     );
 
     return Promise.resolve(keyPair.sign(hash)).then(signature => {
@@ -1671,6 +1693,7 @@ function getHashAndSighashType(
   cache: PsbtCache,
   sighashTypes: number[],
   forkCoin: ForkCoin,
+  singleHash: boolean,
 ): {
   hash: Uint8Array;
   sighashType: number;
@@ -1683,6 +1706,7 @@ function getHashAndSighashType(
     cache,
     false,
     forkCoin,
+    singleHash,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1709,6 +1733,7 @@ function getHashForSig(
   cache: PsbtCache,
   forValidate: boolean,
   forkCoin: ForkCoin,
+  singleHash: boolean,
   sighashTypes?: number[],
 ): {
   script: Uint8Array;
@@ -1763,6 +1788,7 @@ function getHashForSig(
       meaningfulScript,
       prevout.value,
       sighashType,
+      singleHash,
     );
   } else if (isP2WPKH(meaningfulScript)) {
     // P2WPKH uses the P2PKH template for prevoutScript when signing
@@ -1774,6 +1800,7 @@ function getHashForSig(
       signingScript,
       prevout.value,
       sighashType,
+      singleHash,
     );
   } else {
     // non-segwit
@@ -1822,6 +1849,7 @@ function getHashForSig(
           meaningfulScript,
           prevout.value,
           sighashType,
+          singleHash,
         );
       }
     } else {
@@ -1829,6 +1857,7 @@ function getHashForSig(
         inputIndex,
         meaningfulScript,
         sighashType,
+        singleHash,
       );
     }
   }

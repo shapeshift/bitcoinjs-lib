@@ -371,7 +371,7 @@ class Transaction {
    * hashType, and then hashes the result.
    * This hash can then be used to sign the provided transaction input.
    */
-  hashForSignature(inIndex, prevOutScript, hashType) {
+  hashForSignature(inIndex, prevOutScript, hashType, singleHash = false) {
     v.parse(v.tuple([types.UInt32Schema, types.BufferSchema, v.number()]), [
       inIndex,
       prevOutScript,
@@ -426,7 +426,7 @@ class Transaction {
     const buffer = new Uint8Array(txTmp.byteLength(false) + 4);
     tools.writeInt32(buffer, buffer.length - 4, hashType, 'LE');
     txTmp.__toBuffer(buffer, 0, false);
-    return bcrypto.hash256(buffer);
+    return singleHash ? (0, sha256_1.sha256)(buffer) : bcrypto.hash256(buffer);
   }
   hashForWitnessV1(inIndex, prevOutScripts, values, hashType, leafHash, annex) {
     // https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#common-signature-message
@@ -566,7 +566,13 @@ class Transaction {
       tools.concat([Uint8Array.from([0x00]), sigMsgWriter.end()]),
     );
   }
-  hashForWitnessV0(inIndex, prevOutScript, value, hashType) {
+  hashForWitnessV0(
+    inIndex,
+    prevOutScript,
+    value,
+    hashType,
+    singleHash = false,
+  ) {
     v.parse(
       v.tuple([
         types.UInt32Schema,
@@ -641,7 +647,9 @@ class Transaction {
     bufferWriter.writeSlice(hashOutputs);
     bufferWriter.writeUInt32(this.locktime);
     bufferWriter.writeUInt32(hashType);
-    return bcrypto.hash256(tbuffer);
+    return singleHash
+      ? (0, sha256_1.sha256)(tbuffer)
+      : bcrypto.hash256(tbuffer);
   }
   hashForZIP243(inIndex, prevOutScript, value, hashType) {
     v.parse(

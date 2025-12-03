@@ -509,14 +509,14 @@ class Psbt {
       !!output.bip32Derivation && output.bip32Derivation.some(derivationIsMine)
     );
   }
-  validateSignaturesOfAllInputs(validator) {
+  validateSignaturesOfAllInputs(validator, singleHash = false) {
     (0, bip174_2.checkForInput)(this.data.inputs, 0); // making sure we have at least one
     const results = range(this.data.inputs.length).map(idx =>
-      this.validateSignaturesOfInput(idx, validator),
+      this.validateSignaturesOfInput(idx, validator, undefined, singleHash),
     );
     return results.reduce((final, res) => res === true && final, true);
   }
-  validateSignaturesOfInput(inputIndex, validator, pubkey) {
+  validateSignaturesOfInput(inputIndex, validator, pubkey, singleHash = false) {
     const input = this.data.inputs[inputIndex];
     if ((0, bip371_js_1.isTaprootInput)(input))
       return this.validateSignaturesOfTaprootInput(
@@ -524,9 +524,14 @@ class Psbt {
         validator,
         pubkey,
       );
-    return this._validateSignaturesOfInput(inputIndex, validator, pubkey);
+    return this._validateSignaturesOfInput(
+      inputIndex,
+      validator,
+      singleHash,
+      pubkey,
+    );
   }
-  _validateSignaturesOfInput(inputIndex, validator, pubkey) {
+  _validateSignaturesOfInput(inputIndex, validator, singleHash, pubkey) {
     const input = this.data.inputs[inputIndex];
     const partialSig = (input || {}).partialSig;
     if (!input || !partialSig || partialSig.length < 1)
@@ -552,6 +557,7 @@ class Psbt {
               this.__CACHE,
               true,
               this.opts.forkCoin,
+              singleHash,
             )
           : { hash: hashCache, script: scriptCache };
       sighashCache = sig.hashType;
@@ -733,7 +739,7 @@ class Psbt {
       });
     });
   }
-  signInput(inputIndex, keyPair, sighashTypes) {
+  signInput(inputIndex, keyPair, sighashTypes, singleHash = false) {
     if (!keyPair || !keyPair.publicKey)
       throw new Error('Need Signer to sign input');
     const input = (0, bip174_2.checkForInput)(this.data.inputs, inputIndex);
@@ -746,7 +752,7 @@ class Psbt {
         sighashTypes,
       );
     }
-    return this._signInput(inputIndex, keyPair, sighashTypes);
+    return this._signInput(inputIndex, keyPair, sighashTypes, singleHash);
   }
   signTaprootInput(inputIndex, keyPair, tapLeafHashToSign, sighashTypes) {
     if (!keyPair || !keyPair.publicKey)
@@ -762,7 +768,12 @@ class Psbt {
       );
     throw new Error(`Input #${inputIndex} is not of type Taproot.`);
   }
-  _signInput(inputIndex, keyPair, sighashTypes = DEFAULT_SIGHASHES) {
+  _signInput(
+    inputIndex,
+    keyPair,
+    sighashTypes = DEFAULT_SIGHASHES,
+    singleHash,
+  ) {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
       inputIndex,
@@ -770,6 +781,7 @@ class Psbt {
       this.__CACHE,
       sighashTypes,
       this.opts.forkCoin,
+      singleHash,
     );
     const partialSig = [
       {
@@ -823,7 +835,7 @@ class Psbt {
     }
     return this;
   }
-  signInputAsync(inputIndex, keyPair, sighashTypes) {
+  signInputAsync(inputIndex, keyPair, sighashTypes, singleHash = false) {
     return Promise.resolve().then(() => {
       if (!keyPair || !keyPair.publicKey)
         throw new Error('Need Signer to sign input');
@@ -836,7 +848,12 @@ class Psbt {
           undefined,
           sighashTypes,
         );
-      return this._signInputAsync(inputIndex, keyPair, sighashTypes);
+      return this._signInputAsync(
+        inputIndex,
+        keyPair,
+        sighashTypes,
+        singleHash,
+      );
     });
   }
   signTaprootInputAsync(inputIndex, keyPair, tapLeafHash, sighashTypes) {
@@ -855,7 +872,12 @@ class Psbt {
       throw new Error(`Input #${inputIndex} is not of type Taproot.`);
     });
   }
-  _signInputAsync(inputIndex, keyPair, sighashTypes = DEFAULT_SIGHASHES) {
+  _signInputAsync(
+    inputIndex,
+    keyPair,
+    sighashTypes = DEFAULT_SIGHASHES,
+    singleHash,
+  ) {
     const { hash, sighashType } = getHashAndSighashType(
       this.data.inputs,
       inputIndex,
@@ -863,6 +885,7 @@ class Psbt {
       this.__CACHE,
       sighashTypes,
       this.opts.forkCoin,
+      singleHash,
     );
     return Promise.resolve(keyPair.sign(hash)).then(signature => {
       const partialSig = [
@@ -1288,6 +1311,7 @@ function getHashAndSighashType(
   cache,
   sighashTypes,
   forkCoin,
+  singleHash,
 ) {
   const input = (0, bip174_2.checkForInput)(inputs, inputIndex);
   const { hash, sighashType, script } = getHashForSig(
@@ -1297,6 +1321,7 @@ function getHashAndSighashType(
     cache,
     false,
     forkCoin,
+    singleHash,
     sighashTypes,
   );
   checkScriptForPubkey(pubkey, script, 'sign');
@@ -1321,6 +1346,7 @@ function getHashForSig(
   cache,
   forValidate,
   forkCoin,
+  singleHash,
   sighashTypes,
 ) {
   const unsignedTx = cache.__TX;
@@ -1364,6 +1390,7 @@ function getHashForSig(
       meaningfulScript,
       prevout.value,
       sighashType,
+      singleHash,
     );
   } else if ((0, psbtutils_js_1.isP2WPKH)(meaningfulScript)) {
     // P2WPKH uses the P2PKH template for prevoutScript when signing
@@ -1375,6 +1402,7 @@ function getHashForSig(
       signingScript,
       prevout.value,
       sighashType,
+      singleHash,
     );
   } else {
     // non-segwit
@@ -1422,6 +1450,7 @@ function getHashForSig(
           meaningfulScript,
           prevout.value,
           sighashType,
+          singleHash,
         );
       }
     } else {
@@ -1429,6 +1458,7 @@ function getHashForSig(
         inputIndex,
         meaningfulScript,
         sighashType,
+        singleHash,
       );
     }
   }

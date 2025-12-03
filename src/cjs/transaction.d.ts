@@ -55,9 +55,9 @@ export declare class Transaction {
      * hashType, and then hashes the result.
      * This hash can then be used to sign the provided transaction input.
      */
-    hashForSignature(inIndex: number, prevOutScript: Uint8Array, hashType: number): Uint8Array;
+    hashForSignature(inIndex: number, prevOutScript: Uint8Array, hashType: number, singleHash?: boolean): Uint8Array;
     hashForWitnessV1(inIndex: number, prevOutScripts: Uint8Array[], values: bigint[], hashType: number, leafHash?: Uint8Array, annex?: Uint8Array): Uint8Array;
-    hashForWitnessV0(inIndex: number, prevOutScript: Uint8Array, value: bigint, hashType: number): Uint8Array;
+    hashForWitnessV0(inIndex: number, prevOutScript: Uint8Array, value: bigint, hashType: number, singleHash?: boolean): Uint8Array;
     hashForZIP243(inIndex: number, prevOutScript: Uint8Array, value: bigint, hashType: number): Uint8Array;
     hashForZIP244(inIndex: number, prevOuts: Output[], hashType: number): Uint8Array;
     getHash(forWitness?: boolean): Uint8Array;

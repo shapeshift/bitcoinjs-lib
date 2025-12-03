@@ -104,8 +104,8 @@ export declare class Psbt {
     inputHasHDKey(inputIndex: number, root: HDSigner): boolean;
     outputHasPubkey(outputIndex: number, pubkey: Uint8Array): boolean;
     outputHasHDKey(outputIndex: number, root: HDSigner): boolean;
-    validateSignaturesOfAllInputs(validator: ValidateSigFunction): boolean;
-    validateSignaturesOfInput(inputIndex: number, validator: ValidateSigFunction, pubkey?: Uint8Array): boolean;
+    validateSignaturesOfAllInputs(validator: ValidateSigFunction, singleHash?: boolean): boolean;
+    validateSignaturesOfInput(inputIndex: number, validator: ValidateSigFunction, pubkey?: Uint8Array, singleHash?: boolean): boolean;
     private _validateSignaturesOfInput;
     private validateSignaturesOfTaprootInput;
     signAllInputsHD(hdKeyPair: HDSigner, sighashTypes?: number[]): this;
@@ -114,11 +114,11 @@ export declare class Psbt {
     signInputHDAsync(inputIndex: number, hdKeyPair: HDSigner | HDSignerAsync, sighashTypes?: number[]): Promise<void>;
     signAllInputs(keyPair: Signer, sighashTypes?: number[]): this;
     signAllInputsAsync(keyPair: Signer | SignerAsync, sighashTypes?: number[]): Promise<void>;
-    signInput(inputIndex: number, keyPair: Signer, sighashTypes?: number[]): this;
+    signInput(inputIndex: number, keyPair: Signer, sighashTypes?: number[], singleHash?: boolean): this;
     signTaprootInput(inputIndex: number, keyPair: Signer, tapLeafHashToSign?: Uint8Array, sighashTypes?: number[]): this;
     private _signInput;
     private _signTaprootInput;
-    signInputAsync(inputIndex: number, keyPair: Signer | SignerAsync, sighashTypes?: number[]): Promise<void>;
+    signInputAsync(inputIndex: number, keyPair: Signer | SignerAsync, sighashTypes?: number[], singleHash?: boolean): Promise<void>;
     signTaprootInputAsync(inputIndex: number, keyPair: Signer | SignerAsync, tapLeafHash?: Uint8Array, sighashTypes?: number[]): Promise<void>;
     private _signInputAsync;
     private _signTaprootInputAsync;

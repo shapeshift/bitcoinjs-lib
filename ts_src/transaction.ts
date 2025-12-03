@@ -394,6 +394,7 @@ export class Transaction {
     inIndex: number,
     prevOutScript: Uint8Array,
     hashType: number,
+    singleHash = false,
   ): Uint8Array {
     v.parse(v.tuple([types.UInt32Schema, types.BufferSchema, v.number()]), [
       inIndex,
@@ -464,7 +465,7 @@ export class Transaction {
     tools.writeInt32(buffer, buffer.length - 4, hashType, 'LE');
     txTmp.__toBuffer(buffer, 0, false);
 
-    return bcrypto.hash256(buffer);
+    return singleHash ? sha256(buffer) : bcrypto.hash256(buffer);
   }
 
   hashForWitnessV1(
@@ -626,6 +627,7 @@ export class Transaction {
     prevOutScript: Uint8Array,
     value: bigint,
     hashType: number,
+    singleHash = false,
   ): Uint8Array {
     v.parse(
       v.tuple([
@@ -717,7 +719,7 @@ export class Transaction {
     bufferWriter.writeSlice(hashOutputs);
     bufferWriter.writeUInt32(this.locktime);
     bufferWriter.writeUInt32(hashType);
-    return bcrypto.hash256(tbuffer);
+    return singleHash ? sha256(tbuffer) : bcrypto.hash256(tbuffer);
   }
 
   hashForZIP243(
