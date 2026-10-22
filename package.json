@@ -107,5 +107,8 @@
     "typedoc": "^0.26.6",
     "typescript": "^5.0.4"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "resolutions": {
+    "markdown-it": "14.3.3"
+  }
 }
