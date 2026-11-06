@@ -1406,8 +1406,12 @@ function getHashForSig(
     );
   } else {
     // non-segwit
+    // ZIP-244 commits to the amount and script of every prevout, so the parent transaction is not needed
+    const isZip244 =
+      forkCoin === 'zec' && unsignedTx.overwintered && unsignedTx.version === 5;
     if (
       !isForkId &&
+      !isZip244 &&
       input.nonWitnessUtxo === undefined &&
       cache.__UNSAFE_SIGN_NONSEGWIT === false
     )
