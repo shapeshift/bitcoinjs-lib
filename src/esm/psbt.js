@@ -1344,9 +1344,12 @@ function getHashForSig(
       singleHash,
     );
   } else {
-    // non-segwit
+    // non-segwit inputs need the parent tx to verify the amount, unless the sighash commits to it (BCH forkid BIP143, Zcash v5 ZIP-244)
+    const isZip244 =
+      forkCoin === 'zec' && unsignedTx.overwintered && unsignedTx.version === 5;
     if (
       !isForkId &&
+      !isZip244 &&
       input.nonWitnessUtxo === undefined &&
       cache.__UNSAFE_SIGN_NONSEGWIT === false
     )

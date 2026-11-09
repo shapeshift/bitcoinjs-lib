@@ -290,7 +290,7 @@
   integrity sha512-DGmGtC8Tt63J5GfHgfl5CuAXh96VF/LD8K9Hr/Gv0J2lAoRGlPOMpqMpMbCTOoOJMZCk2Xt+DskdDyn6dEFdzQ==
 
 "@shapeshiftoss/bitcoinjs-lib@./":
-  version "7.0.0-shapeshift.2"
+  version "7.0.0-shapeshift.3"
   dependencies:
     "@noble/hashes" "^1.2.0"
     bech32 "^2.0.0"
