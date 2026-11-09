@@ -1405,8 +1405,7 @@ function getHashForSig(
       singleHash,
     );
   } else {
-    // non-segwit
-    // ZIP-244 commits to the amount and script of every prevout, so the parent transaction is not needed
+    // non-segwit inputs need the parent tx to verify the amount, unless the sighash commits to it (BCH forkid BIP143, Zcash v5 ZIP-244)
     const isZip244 =
       forkCoin === 'zec' && unsignedTx.overwintered && unsignedTx.version === 5;
     if (
